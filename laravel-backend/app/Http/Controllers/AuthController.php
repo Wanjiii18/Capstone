@@ -17,26 +17,36 @@ class AuthController extends Controller
      */
     public function register(Request $request): JsonResponse
     {
+        // Debug: Log the incoming request data
+        \Log::info('Registration request data:', $request->all());
+        
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
             'password_confirmation' => 'required|same:password',
-            'role' => 'in:customer,karenderia_owner'
+            'role' => 'nullable|in:customer,karenderia_owner,user'
         ]);
 
         if ($validator->fails()) {
+            \Log::error('Validation failed:', $validator->errors()->toArray());
             return response()->json([
                 'message' => 'Validation failed',
                 'errors' => $validator->errors()
             ], 422);
         }
 
+        // Map role (user -> customer for backward compatibility)
+        $role = $request->role ?? 'customer';
+        if ($role === 'user') {
+            $role = 'customer';
+        }
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => $request->role ?? 'customer',
+            'role' => $role,
             'verified' => false
         ]);
 
@@ -45,11 +55,14 @@ class AuthController extends Controller
         return response()->json([
             'user' => [
                 'id' => $user->id,
+                'uid' => $user->id, // For compatibility with frontend
                 'email' => $user->email,
                 'name' => $user->name,
                 'displayName' => $user->name,
                 'role' => $user->role,
-                'verified' => $user->verified
+                'verified' => $user->verified,
+                'allergens' => [],
+                'mealPlans' => []
             ],
             'access_token' => $token,
             'token_type' => 'Bearer'
