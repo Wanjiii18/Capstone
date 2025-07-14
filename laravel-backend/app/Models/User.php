@@ -62,15 +62,13 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'date_of_birth' => 'date',
-            'is_active' => 'boolean',
-            'profile_complete' => 'boolean',
-            'last_login' => 'datetime',
-            'diet_preferences' => 'array',
+            'verified' => 'boolean',
             'allergies' => 'array',
-            'health_conditions' => 'array',
-            'food_restrictions' => 'array',
-            'preferred_cuisine' => 'array',
+            'dietary_restrictions' => 'array',
+            'cuisine_preferences' => 'array',
+            'preferred_meal_times' => 'array',
+            'location' => 'array',
+            'preferences' => 'array',
         ];
     }
 
