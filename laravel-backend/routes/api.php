@@ -6,7 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\KarenderiaController;
-use App\Http\Controllers\MenuController;
+use App\Http\Controllers\MealPlanController;
 
 /*
 |--------------------------------------------------------------------------
@@ -79,54 +79,11 @@ Route::prefix('karenderias')->group(function () {
     });
 });
 
-// Menu items routes
-Route::prefix('menu-items')->group(function () {
-    Route::get('/', [MenuController::class, 'index']);
-    Route::get('/{id}', [MenuController::class, 'show']);
-    Route::post('/', [MenuController::class, 'store']); // Made public for testing
-    
-    // Protected routes for karenderia owners
-    Route::middleware('auth:sanctum')->group(function () {
-        Route::put('/{id}', [MenuController::class, 'update']);
-        Route::delete('/{id}', [MenuController::class, 'destroy']);
-        Route::patch('/{id}/toggle-availability', [MenuController::class, 'toggleAvailability']);
-    });
-});
-
-// Quick fix for missing endpoints your app is calling
-Route::get('/menu-categories', function () {
-    return response()->json([
-        'success' => true,
-        'data' => [
-            ['id' => 1, 'name' => 'Main Dish', 'description' => 'Primary dishes'],
-            ['id' => 2, 'name' => 'Appetizer', 'description' => 'Starters'],
-            ['id' => 3, 'name' => 'Dessert', 'description' => 'Sweet treats'],
-            ['id' => 4, 'name' => 'Beverages', 'description' => 'Drinks']
-        ]
-    ]);
-});
-
-Route::get('/ingredients', function () {
-    return response()->json([
-        'success' => true,
-        'data' => [
-            ['id' => 1, 'name' => 'Rice', 'category' => 'Grains'],
-            ['id' => 2, 'name' => 'Chicken', 'category' => 'Meat'],
-            ['id' => 3, 'name' => 'Pork', 'category' => 'Meat'],
-            ['id' => 4, 'name' => 'Fish', 'category' => 'Seafood'],
-            ['id' => 5, 'name' => 'Vegetables', 'category' => 'Vegetables']
-        ]
-    ]);
-});
-
-Route::middleware('auth:sanctum')->get('/analytics/daily-sales', function () {
-    return response()->json([
-        'success' => true,
-        'data' => [
-            'total_sales' => 0,
-            'orders_count' => 0,
-            'average_order_value' => 0,
-            'date' => now()->format('Y-m-d')
-        ]
-    ]);
+// Meal Plan routes
+Route::prefix('meal-plans')->group(function () {
+    Route::get('/', [MealPlanController::class, 'index']);
+    Route::post('/', [MealPlanController::class, 'store']);
+    Route::get('/{id}', [MealPlanController::class, 'show']);
+    Route::put('/{id}', [MealPlanController::class, 'update']);
+    Route::delete('/{id}', [MealPlanController::class, 'destroy']);
 });

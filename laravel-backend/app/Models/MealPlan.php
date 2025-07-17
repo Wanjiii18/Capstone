@@ -11,10 +11,10 @@ class MealPlan extends Model
 
     protected $fillable = [
         'user_id',
-        'name',
-        'description',
-        'meals',
-        'is_active'
+        'breakfast',
+        'lunch',
+        'dinner',
+        'plan_date'
     ];
 
     protected $casts = [
