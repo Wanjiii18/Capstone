@@ -7,6 +7,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\KarenderiaController;
 use App\Http\Controllers\MealPlanController;
+use App\Http\Controllers\AdminController;
 
 /*
 |--------------------------------------------------------------------------
@@ -86,4 +87,25 @@ Route::prefix('meal-plans')->group(function () {
     Route::get('/{id}', [MealPlanController::class, 'show']);
     Route::put('/{id}', [MealPlanController::class, 'update']);
     Route::delete('/{id}', [MealPlanController::class, 'destroy']);
+});
+
+// Admin routes (Protected - Admin only)
+Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+    // Dashboard
+    Route::get('/dashboard', [AdminController::class, 'dashboard']);
+    
+    // Karenderias Management
+    Route::get('/karenderias', [AdminController::class, 'karenderias']);
+    Route::get('/karenderias/{id}', [AdminController::class, 'karenderiaDetails']);
+    Route::get('/karenderias/{id}/inventory', [AdminController::class, 'karenderiaInventory']);
+    Route::put('/karenderias/{id}/status', [AdminController::class, 'updateKarenderiaStatus']);
+    
+    // Sales Analytics
+    Route::get('/analytics/sales', [AdminController::class, 'salesAnalytics']);
+    
+    // Inventory Management
+    Route::get('/inventory/alerts', [AdminController::class, 'inventoryAlerts']);
+    
+    // User Management
+    Route::get('/users', [AdminController::class, 'users']);
 });
