@@ -346,4 +346,35 @@ class AdminController extends Controller
 
         return response()->json($users);
     }
+
+    /**
+     * Get all menu items across all karenderias for admin inventory view
+     */
+    public function allMenuItems(Request $request)
+    {
+        $query = MenuItem::with(['karenderia']);
+
+        // Filter by karenderia if specified
+        if ($request->has('karenderia_id')) {
+            $query->where('karenderia_id', $request->karenderia_id);
+        }
+
+        // Filter by availability
+        if ($request->has('available')) {
+            $query->where('is_available', $request->boolean('available'));
+        }
+
+        // Search by name
+        if ($request->has('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+
+        $menuItems = $query->orderBy('created_at', 'desc')->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $menuItems,
+            'message' => 'Menu items retrieved successfully'
+        ]);
+    }
 }

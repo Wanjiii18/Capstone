@@ -8,6 +8,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\KarenderiaController;
 use App\Http\Controllers\MealPlanController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\MenuItemController;
 
 /*
 |--------------------------------------------------------------------------
@@ -89,6 +90,23 @@ Route::prefix('meal-plans')->group(function () {
     Route::delete('/{id}', [MealPlanController::class, 'destroy']);
 });
 
+// Menu Items routes
+Route::middleware('auth:sanctum')->prefix('menu-items')->group(function () {
+    Route::post('/', [MenuItemController::class, 'store']);
+    Route::get('/', [MenuItemController::class, 'index']);
+    Route::get('/{id}', [MenuItemController::class, 'show']);
+    Route::put('/{id}', [MenuItemController::class, 'update']);
+    Route::patch('/{id}/availability', [MenuItemController::class, 'updateAvailability']);
+    Route::delete('/{id}', [MenuItemController::class, 'destroy']);
+});
+
+// Analytics routes for karenderia owners
+Route::middleware('auth:sanctum')->prefix('analytics')->group(function () {
+    Route::get('/daily-sales', [MenuItemController::class, 'getDailySales']);
+    Route::get('/monthly-sales', [MenuItemController::class, 'getMonthlySales']);
+    Route::get('/sales-summary', [MenuItemController::class, 'getSalesSummary']);
+});
+
 // Admin routes (Protected - Admin only)
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
     // Dashboard
@@ -100,8 +118,11 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/karenderias/{id}/inventory', [AdminController::class, 'karenderiaInventory']);
     Route::put('/karenderias/{id}/status', [AdminController::class, 'updateKarenderiaStatus']);
     
+    // Menu Items Management - All menu items across all karenderias
+    Route::get('/menu-items', [AdminController::class, 'allMenuItems']);
+    
     // Sales Analytics
-    Route::get('/analytics/sales', [AdminController::class, 'salesAnalytics']);
+    Route::get('/sales-analytics', [AdminController::class, 'salesAnalytics']);
     
     // Inventory Management
     Route::get('/inventory/alerts', [AdminController::class, 'inventoryAlerts']);

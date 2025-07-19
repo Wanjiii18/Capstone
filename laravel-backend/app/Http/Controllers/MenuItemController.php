@@ -1,0 +1,278 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\MenuItem;
+
+class MenuItemController extends Controller
+{
+    public function index(Request $request)
+    {
+        try {
+            $user = $request->user();
+            
+            if (!$user) {
+                return response()->json(['error' => 'User not authenticated'], 401);
+            }
+
+            // Get user's karenderia
+            $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
+            
+            if (!$karenderia) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [],
+                    'message' => 'No karenderia found for this user'
+                ]);
+            }
+
+            // Get menu items for this karenderia only
+            $menuItems = MenuItem::where('karenderia_id', $karenderia->id)
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $menuItems,
+                'message' => 'Menu items retrieved successfully'
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error loading menu items: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function store(Request $request)
+    {
+        try {
+            $validatedData = $request->validate([
+                'name' => 'required|string|max:255',
+                'price' => 'required|numeric',
+                'description' => 'nullable|string',
+                'category' => 'nullable|string|max:255',
+                'karenderia_id' => 'nullable|exists:karenderias,id',
+            ]);
+
+            // Set default category if not provided
+            if (!isset($validatedData['category'])) {
+                $validatedData['category'] = 'Main Dish';
+            }
+
+            // If karenderia_id is not provided, create or get a default karenderia for this user
+            if (!isset($validatedData['karenderia_id'])) {
+                $user = $request->user();
+                
+                if (!$user) {
+                    return response()->json(['error' => 'User not authenticated'], 401);
+                }
+                
+                // Try to find existing karenderia for this user
+                $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
+                
+                // If no karenderia exists, create a default one
+                if (!$karenderia) {
+                    $karenderia = \App\Models\Karenderia::create([
+                        'name' => $user->name . "'s Karenderia",
+                        'description' => 'Default karenderia for ' . $user->name,
+                        'address' => $user->address ?? 'Default Address',
+                        'owner_id' => $user->id,
+                        'status' => 'active'
+                    ]);
+                }
+                
+                $validatedData['karenderia_id'] = $karenderia->id;
+            }
+
+            $menuItem = MenuItem::create($validatedData);
+
+            // Load the menuItem with its relationships
+            $menuItem = MenuItem::with('karenderia')->find($menuItem->id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Menu item added successfully',
+                'data' => [
+                    'id' => $menuItem->id,
+                    'name' => $menuItem->name,
+                    'description' => $menuItem->description,
+                    'price' => $menuItem->price,
+                    'category' => $menuItem->category,
+                    'image_url' => $menuItem->image_url,
+                    'is_available' => $menuItem->is_available,
+                    'karenderia_id' => $menuItem->karenderia_id,
+                    'created_at' => $menuItem->created_at,
+                    'updated_at' => $menuItem->updated_at
+                ]
+            ], 201);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Validation failed',
+                'message' => 'Invalid input data',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to create menu item',
+                'message' => $e->getMessage(),
+                'debug' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ]
+            ], 500);
+        }
+    }
+
+    public function show($id)
+    {
+        $menuItem = MenuItem::findOrFail($id);
+        return response()->json($menuItem);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $menuItem = MenuItem::findOrFail($id);
+        $menuItem->update($request->all());
+
+        return response()->json(['message' => 'Menu item updated successfully', 'menuItem' => $menuItem]);
+    }
+
+    public function destroy($id)
+    {
+        $menuItem = MenuItem::findOrFail($id);
+        $menuItem->delete();
+
+        return response()->json(['message' => 'Menu item deleted successfully']);
+    }
+
+    public function updateAvailability(Request $request, $id)
+    {
+        try {
+            $user = $request->user();
+            
+            // Get user's karenderia
+            $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
+            
+            if (!$karenderia) {
+                return response()->json(['error' => 'No karenderia found for this user'], 403);
+            }
+
+            // Find the menu item and ensure it belongs to this karenderia
+            $menuItem = MenuItem::where('id', $id)
+                ->where('karenderia_id', $karenderia->id)
+                ->first();
+
+            if (!$menuItem) {
+                return response()->json(['error' => 'Menu item not found or access denied'], 404);
+            }
+
+            // Validate the request
+            $request->validate([
+                'is_available' => 'required|boolean'
+            ]);
+
+            // Update availability
+            $menuItem->is_available = $request->is_available;
+            $menuItem->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Menu item availability updated successfully',
+                'data' => [
+                    'id' => $menuItem->id,
+                    'name' => $menuItem->name,
+                    'is_available' => $menuItem->is_available,
+                    'price' => $menuItem->price,
+                    'cost' => $menuItem->cost,
+                    'category' => $menuItem->category,
+                    'description' => $menuItem->description,
+                    'image_url' => $menuItem->image_url,
+                    'created_at' => $menuItem->created_at,
+                    'updated_at' => $menuItem->updated_at
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating menu item availability: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getDailySales(Request $request)
+    {
+        $date = $request->get('date', now()->format('Y-m-d'));
+        $user = $request->user();
+        
+        // Get user's karenderia
+        $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
+        
+        if (!$karenderia) {
+            return response()->json(['sales' => 0, 'orders' => 0, 'date' => $date]);
+        }
+
+        // Mock data for now - replace with actual sales calculation
+        return response()->json([
+            'sales' => 1500.00,
+            'orders' => 12,
+            'date' => $date,
+            'karenderia_id' => $karenderia->id
+        ]);
+    }
+
+    public function getMonthlySales(Request $request)
+    {
+        $month = $request->get('month', now()->format('Y-m'));
+        $user = $request->user();
+        
+        // Get user's karenderia
+        $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
+        
+        if (!$karenderia) {
+            return response()->json(['sales' => 0, 'orders' => 0, 'month' => $month]);
+        }
+
+        // Mock data for now - replace with actual sales calculation
+        return response()->json([
+            'sales' => 45000.00,
+            'orders' => 380,
+            'month' => $month,
+            'karenderia_id' => $karenderia->id
+        ]);
+    }
+
+    public function getSalesSummary(Request $request)
+    {
+        $user = $request->user();
+        
+        // Get user's karenderia
+        $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
+        
+        if (!$karenderia) {
+            return response()->json([
+                'total_sales' => 0,
+                'total_orders' => 0,
+                'total_menu_items' => 0,
+                'average_order_value' => 0
+            ]);
+        }
+
+        $menuItemsCount = MenuItem::where('karenderia_id', $karenderia->id)->count();
+
+        // Mock data for now - replace with actual calculations
+        return response()->json([
+            'total_sales' => 125000.00,
+            'total_orders' => 850,
+            'total_menu_items' => $menuItemsCount,
+            'average_order_value' => 147.06,
+            'karenderia_id' => $karenderia->id
+        ]);
+    }
+}
