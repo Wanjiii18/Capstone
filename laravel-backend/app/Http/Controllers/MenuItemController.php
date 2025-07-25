@@ -7,43 +7,11 @@ use App\Models\MenuItem;
 
 class MenuItemController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
-        try {
-            $user = $request->user();
-            
-            if (!$user) {
-                return response()->json(['error' => 'User not authenticated'], 401);
-            }
-
-            // Get user's karenderia
-            $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
-            
-            if (!$karenderia) {
-                return response()->json([
-                    'success' => true,
-                    'data' => [],
-                    'message' => 'No karenderia found for this user'
-                ]);
-            }
-
-            // Get menu items for this karenderia only
-            $menuItems = MenuItem::where('karenderia_id', $karenderia->id)
-                ->orderBy('created_at', 'desc')
-                ->get();
-
-            return response()->json([
-                'success' => true,
-                'data' => $menuItems,
-                'message' => 'Menu items retrieved successfully'
-            ]);
-            
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error loading menu items: ' . $e->getMessage()
-            ], 500);
-        }
+        // For now, return all menu items to debug the issue
+        $menuItems = MenuItem::with('karenderia')->get();
+        return response()->json(['data' => $menuItems]);
     }
 
     public function store(Request $request)
@@ -149,61 +117,6 @@ class MenuItemController extends Controller
         $menuItem->delete();
 
         return response()->json(['message' => 'Menu item deleted successfully']);
-    }
-
-    public function updateAvailability(Request $request, $id)
-    {
-        try {
-            $user = $request->user();
-            
-            // Get user's karenderia
-            $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
-            
-            if (!$karenderia) {
-                return response()->json(['error' => 'No karenderia found for this user'], 403);
-            }
-
-            // Find the menu item and ensure it belongs to this karenderia
-            $menuItem = MenuItem::where('id', $id)
-                ->where('karenderia_id', $karenderia->id)
-                ->first();
-
-            if (!$menuItem) {
-                return response()->json(['error' => 'Menu item not found or access denied'], 404);
-            }
-
-            // Validate the request
-            $request->validate([
-                'is_available' => 'required|boolean'
-            ]);
-
-            // Update availability
-            $menuItem->is_available = $request->is_available;
-            $menuItem->save();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Menu item availability updated successfully',
-                'data' => [
-                    'id' => $menuItem->id,
-                    'name' => $menuItem->name,
-                    'is_available' => $menuItem->is_available,
-                    'price' => $menuItem->price,
-                    'cost' => $menuItem->cost,
-                    'category' => $menuItem->category,
-                    'description' => $menuItem->description,
-                    'image_url' => $menuItem->image_url,
-                    'created_at' => $menuItem->created_at,
-                    'updated_at' => $menuItem->updated_at
-                ]
-            ]);
-            
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error updating menu item availability: ' . $e->getMessage()
-            ], 500);
-        }
     }
 
     public function getDailySales(Request $request)

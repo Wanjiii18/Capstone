@@ -59,12 +59,17 @@ Route::middleware('auth:sanctum')->prefix('users/{userId}')->group(function () {
 });
 
 // Order routes
-Route::middleware('auth:sanctum')->prefix('orders')->group(function () {
-    Route::get('/', [OrderController::class, 'index']);
+Route::prefix('orders')->group(function () {
+    // Guest order creation (no auth required)
     Route::post('/', [OrderController::class, 'store']);
-    Route::get('/recent', [OrderController::class, 'getRecentOrders']);
-    Route::get('/{id}', [OrderController::class, 'show']);
-    Route::put('/{id}/status', [OrderController::class, 'updateStatus']);
+    
+    // Authenticated order routes
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/', [OrderController::class, 'index']);
+        Route::get('/recent', [OrderController::class, 'getRecentOrders']);
+        Route::get('/{id}', [OrderController::class, 'show']);
+        Route::put('/{id}/status', [OrderController::class, 'updateStatus']);
+    });
 });
 
 // Karenderia routes
@@ -96,7 +101,6 @@ Route::middleware('auth:sanctum')->prefix('menu-items')->group(function () {
     Route::get('/', [MenuItemController::class, 'index']);
     Route::get('/{id}', [MenuItemController::class, 'show']);
     Route::put('/{id}', [MenuItemController::class, 'update']);
-    Route::patch('/{id}/availability', [MenuItemController::class, 'updateAvailability']);
     Route::delete('/{id}', [MenuItemController::class, 'destroy']);
 });
 

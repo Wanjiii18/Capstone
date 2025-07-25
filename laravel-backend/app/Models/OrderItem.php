@@ -10,13 +10,15 @@ class OrderItem extends Model
     protected $fillable = [
         'order_id',
         'menu_item_id',
+        'menu_item_name',
         'quantity',
         'unit_price',
         'unit_cost',
         'total_price',
         'total_cost',
         'special_instructions',
-        'customizations'
+        'customizations',
+        'preparation_time_minutes'
     ];
 
     protected $casts = [
