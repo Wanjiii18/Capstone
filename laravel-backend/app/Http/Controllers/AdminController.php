@@ -109,7 +109,16 @@ class AdminController extends Controller
             return $karenderia;
         });
 
-        return response()->json($karenderias);
+        return response()->json([
+            'success' => true,
+            'data' => $karenderias->items(),
+            'pagination' => [
+                'current_page' => $karenderias->currentPage(),
+                'total_pages' => $karenderias->lastPage(),
+                'total_items' => $karenderias->total(),
+                'per_page' => $karenderias->perPage()
+            ]
+        ]);
     }
 
     /**
@@ -375,6 +384,352 @@ class AdminController extends Controller
             'success' => true,
             'data' => $menuItems,
             'message' => 'Menu items retrieved successfully'
+        ]);
+    }
+
+    /**
+     * Get all karenderias with owner information
+     */
+    public function getAllKarenderias(Request $request)
+    {
+        $query = Karenderia::with(['owner:id,name,email']);
+
+        // Filter by status if specified
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $karenderias = $query->orderBy('created_at', 'desc')->get();
+
+        // Transform the data to include owner information
+        $transformedKarenderias = $karenderias->map(function ($karenderia) {
+            return [
+                'id' => $karenderia->id,
+                'business_name' => $karenderia->business_name,
+                'description' => $karenderia->description,
+                'address' => $karenderia->address,
+                'city' => $karenderia->city,
+                'province' => $karenderia->province,
+                'latitude' => $karenderia->latitude,
+                'longitude' => $karenderia->longitude,
+                'phone' => $karenderia->phone,
+                'business_email' => $karenderia->business_email,
+                'opening_time' => $karenderia->opening_time,
+                'closing_time' => $karenderia->closing_time,
+                'operating_days' => json_decode($karenderia->operating_days, true),
+                'delivery_fee' => $karenderia->delivery_fee,
+                'delivery_time_minutes' => $karenderia->delivery_time_minutes,
+                'accepts_cash' => $karenderia->accepts_cash,
+                'accepts_online_payment' => $karenderia->accepts_online_payment,
+                'status' => $karenderia->status,
+                'approved_at' => $karenderia->approved_at,
+                'approved_by' => $karenderia->approved_by,
+                'owner_id' => $karenderia->owner_id,
+                'owner_name' => $karenderia->owner->name,
+                'owner_email' => $karenderia->owner->email,
+                'created_at' => $karenderia->created_at,
+                'updated_at' => $karenderia->updated_at,
+            ];
+        });
+
+        return response()->json($transformedKarenderias);
+    }
+
+    /**
+     * Update karenderia location (latitude/longitude)
+     */
+    public function updateKarenderiaLocation(Request $request, $id)
+    {
+        $request->validate([
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180'
+        ]);
+
+        $karenderia = Karenderia::findOrFail($id);
+        
+        $karenderia->update([
+            'latitude' => $request->latitude,
+            'longitude' => $request->longitude
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Karenderia location updated successfully',
+            'data' => $karenderia
+        ]);
+    }
+
+    /**
+     * Update karenderia details
+     */
+    public function updateKarenderiaDetails(Request $request, $id)
+    {
+        $karenderia = Karenderia::findOrFail($id);
+        
+        $validatedData = $request->validate([
+            'business_name' => 'sometimes|string|max:255',
+            'description' => 'sometimes|string',
+            'address' => 'sometimes|string',
+            'city' => 'sometimes|string|max:100',
+            'province' => 'sometimes|string|max:100',
+            'phone' => 'nullable|string|max:20',
+            'business_email' => 'nullable|email|max:255',
+            'opening_time' => 'nullable|string',
+            'closing_time' => 'nullable|string',
+            'operating_days' => 'nullable|array',
+            'delivery_fee' => 'nullable|numeric|min:0',
+            'delivery_time_minutes' => 'nullable|integer|min:0',
+            'accepts_cash' => 'boolean',
+            'accepts_online_payment' => 'boolean'
+        ]);
+
+        // Convert operating_days to JSON if provided
+        if (isset($validatedData['operating_days'])) {
+            $validatedData['operating_days'] = json_encode($validatedData['operating_days']);
+        }
+
+        $karenderia->update($validatedData);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Karenderia details updated successfully',
+            'data' => $karenderia
+        ]);
+    }
+
+    /**
+     * Delete karenderia
+     */
+    public function deleteKarenderia($id)
+    {
+        $karenderia = Karenderia::findOrFail($id);
+        $karenderia->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Karenderia deleted successfully'
+        ]);
+    }
+
+    /**
+     * Get karenderia by ID with owner information
+     */
+    public function getKarenderiaById($id)
+    {
+        $karenderia = Karenderia::with(['owner:id,name,email'])->findOrFail($id);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $karenderia->id,
+                'business_name' => $karenderia->business_name,
+                'description' => $karenderia->description,
+                'address' => $karenderia->address,
+                'city' => $karenderia->city,
+                'province' => $karenderia->province,
+                'latitude' => $karenderia->latitude,
+                'longitude' => $karenderia->longitude,
+                'phone' => $karenderia->phone,
+                'business_email' => $karenderia->business_email,
+                'opening_time' => $karenderia->opening_time,
+                'closing_time' => $karenderia->closing_time,
+                'operating_days' => json_decode($karenderia->operating_days, true),
+                'delivery_fee' => $karenderia->delivery_fee,
+                'delivery_time_minutes' => $karenderia->delivery_time_minutes,
+                'accepts_cash' => $karenderia->accepts_cash,
+                'accepts_online_payment' => $karenderia->accepts_online_payment,
+                'status' => $karenderia->status,
+                'approved_at' => $karenderia->approved_at,
+                'approved_by' => $karenderia->approved_by,
+                'owner_id' => $karenderia->owner_id,
+                'owner_name' => $karenderia->owner->name,
+                'owner_email' => $karenderia->owner->email,
+                'created_at' => $karenderia->created_at,
+                'updated_at' => $karenderia->updated_at,
+            ]
+        ]);
+    }
+
+    /**
+     * Get dashboard stats
+     */
+    public function getDashboardStats()
+    {
+        $stats = [
+            'total_karenderias' => Karenderia::count(),
+            'pending_karenderias' => Karenderia::where('status', 'pending')->count(),
+            'approved_karenderias' => Karenderia::where('status', 'approved')->count(),
+            'active_karenderias' => Karenderia::where('status', 'active')->count(),
+            'karenderias_without_location' => Karenderia::whereNull('latitude')->orWhereNull('longitude')->count(),
+            'total_users' => User::where('role', 'customer')->count(),
+            'total_owners' => User::where('role', 'karenderia_owner')->count(),
+            'total_orders' => Order::count(),
+            'todays_orders' => Order::whereDate('created_at', today())->count(),
+            'total_revenue' => Order::where('payment_status', 'paid')->sum('total_amount')
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data' => $stats
+        ]);
+    }
+
+    /**
+     * Get all customers
+     */
+    public function getCustomers()
+    {
+        $customers = User::where('role', 'customer')
+            ->with(['orders' => function($query) {
+                $query->select('user_id', 'total_amount', 'payment_status', 'created_at')
+                      ->orderBy('created_at', 'desc')
+                      ->limit(5);
+            }])
+            ->withCount(['orders'])
+            ->withSum('orders', 'total_amount')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($customer) {
+                return [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'email' => $customer->email,
+                    'phone' => $customer->phone,
+                    'email_verified_at' => $customer->email_verified_at,
+                    'created_at' => $customer->created_at,
+                    'last_login' => $customer->updated_at,
+                    'total_orders' => $customer->orders_count,
+                    'total_spent' => $customer->orders_sum_total_amount ?? 0,
+                    'recent_orders' => $customer->orders,
+                    'status' => $customer->email_verified_at ? 'verified' : 'unverified'
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $customers
+        ]);
+    }
+
+    /**
+     * Get all karenderia owners
+     */
+    public function getKarenderiaOwners()
+    {
+        $owners = User::where('role', 'karenderia_owner')
+            ->with(['karenderia' => function($query) {
+                $query->select('user_id', 'business_name', 'status', 'city', 'province', 'approved_at', 'latitude', 'longitude');
+            }])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($owner) {
+                return [
+                    'id' => $owner->id,
+                    'name' => $owner->name,
+                    'email' => $owner->email,
+                    'phone' => $owner->phone,
+                    'email_verified_at' => $owner->email_verified_at,
+                    'created_at' => $owner->created_at,
+                    'karenderia' => $owner->karenderia ? [
+                        'business_name' => $owner->karenderia->business_name,
+                        'status' => $owner->karenderia->status,
+                        'location' => $owner->karenderia->city . ', ' . $owner->karenderia->province,
+                        'approved_at' => $owner->karenderia->approved_at,
+                        'has_location' => !is_null($owner->karenderia->latitude) && !is_null($owner->karenderia->longitude)
+                    ] : null,
+                    'status' => $owner->email_verified_at ? 'verified' : 'unverified'
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $owners
+        ]);
+    }
+
+    /**
+     * Update user role
+     */
+    public function updateUserRole(Request $request, $userId)
+    {
+        $request->validate([
+            'role' => 'required|in:customer,karenderia_owner,admin'
+        ]);
+
+        $user = User::findOrFail($userId);
+        
+        // Prevent changing admin role unless current user is admin
+        if ($user->role === 'admin' && auth()->user()->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot modify admin user role'
+            ], 403);
+        }
+
+        $oldRole = $user->role;
+        $user->role = $request->role;
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => "User role updated from {$oldRole} to {$request->role}",
+            'data' => $user
+        ]);
+    }
+
+    /**
+     * Toggle user status (enable/disable)
+     */
+    public function toggleUserStatus($userId)
+    {
+        $user = User::findOrFail($userId);
+        
+        // Prevent disabling admin users
+        if ($user->role === 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot disable admin users'
+            ], 403);
+        }
+
+        // Toggle email_verified_at as a way to enable/disable users
+        $user->email_verified_at = $user->email_verified_at ? null : now();
+        $user->save();
+
+        $status = $user->email_verified_at ? 'enabled' : 'disabled';
+
+        return response()->json([
+            'success' => true,
+            'message' => "User has been {$status}",
+            'data' => $user
+        ]);
+    }
+
+    /**
+     * Delete user (soft delete or hard delete)
+     */
+    public function deleteUser($userId)
+    {
+        $user = User::findOrFail($userId);
+        
+        // Prevent deleting admin users
+        if ($user->role === 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete admin users'
+            ], 403);
+        }
+
+        // If karenderia owner, also handle karenderia record
+        if ($user->role === 'karenderia_owner' && $user->karenderia) {
+            $user->karenderia->delete();
+        }
+
+        $user->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User deleted successfully'
         ]);
     }
 }

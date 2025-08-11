@@ -29,6 +29,7 @@ Route::get('/health', function () {
 // Authentication routes
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/register-karenderia-owner', [AuthController::class, 'registerKarenderiaOwner']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
@@ -81,6 +82,7 @@ Route::prefix('karenderias')->group(function () {
     // Protected routes for karenderia owners
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [KarenderiaController::class, 'store']);
+        Route::get('/my-karenderia', [KarenderiaController::class, 'myKarenderia']);
         Route::put('/{id}', [KarenderiaController::class, 'update']);
         Route::delete('/{id}', [KarenderiaController::class, 'destroy']);
     });
@@ -115,12 +117,20 @@ Route::middleware('auth:sanctum')->prefix('analytics')->group(function () {
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
     // Dashboard
     Route::get('/dashboard', [AdminController::class, 'dashboard']);
+    Route::get('/dashboard/stats', [AdminController::class, 'getDashboardStats']);
     
     // Karenderias Management
-    Route::get('/karenderias', [AdminController::class, 'karenderias']);
-    Route::get('/karenderias/{id}', [AdminController::class, 'karenderiaDetails']);
-    Route::get('/karenderias/{id}/inventory', [AdminController::class, 'karenderiaInventory']);
+    Route::get('/karenderias', [AdminController::class, 'getAllKarenderias']);
+    Route::get('/karenderias/{id}', [AdminController::class, 'getKarenderiaById']);
+    Route::put('/karenderias/{id}', [AdminController::class, 'updateKarenderiaDetails']);
+    Route::put('/karenderias/{id}/location', [AdminController::class, 'updateKarenderiaLocation']);
     Route::put('/karenderias/{id}/status', [AdminController::class, 'updateKarenderiaStatus']);
+    Route::delete('/karenderias/{id}', [AdminController::class, 'deleteKarenderia']);
+    Route::get('/karenderias/{id}/inventory', [AdminController::class, 'karenderiaInventory']);
+    
+    // Legacy routes (keeping for backward compatibility)
+    Route::get('/karenderias-old', [AdminController::class, 'karenderias']);
+    Route::get('/karenderias-old/{id}', [AdminController::class, 'karenderiaDetails']);
     
     // Menu Items Management - All menu items across all karenderias
     Route::get('/menu-items', [AdminController::class, 'allMenuItems']);
@@ -133,4 +143,9 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     
     // User Management
     Route::get('/users', [AdminController::class, 'users']);
+    Route::get('/customers', [AdminController::class, 'getCustomers']);
+    Route::get('/karenderia-owners', [AdminController::class, 'getKarenderiaOwners']);
+    Route::put('/users/{userId}/role', [AdminController::class, 'updateUserRole']);
+    Route::put('/users/{userId}/toggle-status', [AdminController::class, 'toggleUserStatus']);
+    Route::delete('/users/{userId}', [AdminController::class, 'deleteUser']);
 });

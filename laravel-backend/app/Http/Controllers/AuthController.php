@@ -57,6 +57,111 @@ class AuthController extends Controller
     }
 
     /**
+     * Register a new karenderia owner with business details
+     */
+    public function registerKarenderiaOwner(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            // User account validation
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8',
+            'password_confirmation' => 'required|same:password',
+            
+            // Business information validation
+            'business_name' => 'required|string|max:255',
+            'description' => 'required|string|min:10',
+            'address' => 'required|string|min:10',
+            'city' => 'required|string|max:100',
+            'province' => 'required|string|max:100',
+            
+            // Location coordinates (optional - admin will set these)
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            
+            // Optional business fields
+            'phone' => 'nullable|string|max:20',
+            'business_email' => 'nullable|email|max:255',
+            'opening_time' => 'nullable|string',
+            'closing_time' => 'nullable|string',
+            'operating_days' => 'nullable|array',
+            'delivery_fee' => 'nullable|numeric|min:0',
+            'delivery_time_minutes' => 'nullable|integer|min:0',
+            'accepts_cash' => 'boolean',
+            'accepts_online_payment' => 'boolean'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            // Create user account
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'role' => 'karenderia_owner',
+                'verified' => false
+            ]);
+
+            // Create karenderia business record
+            $karenderia = $user->karenderia()->create([
+                'business_name' => $request->business_name,
+                'description' => $request->description,
+                'address' => $request->address,
+                'city' => $request->city,
+                'province' => $request->province,
+                'latitude' => $request->latitude, // Will be null initially
+                'longitude' => $request->longitude, // Will be null initially
+                'phone' => $request->phone,
+                'business_email' => $request->business_email,
+                'opening_time' => $request->opening_time ?? '09:00',
+                'closing_time' => $request->closing_time ?? '21:00',
+                'operating_days' => json_encode($request->operating_days ?? []),
+                'delivery_fee' => $request->delivery_fee ?? 0,
+                'delivery_time_minutes' => $request->delivery_time_minutes ?? 30,
+                'accepts_cash' => $request->accepts_cash ?? true,
+                'accepts_online_payment' => $request->accepts_online_payment ?? false,
+                'status' => 'pending', // Requires admin approval
+                'approved_at' => null,
+                'approved_by' => null
+            ]);
+
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            return response()->json([
+                'message' => 'Karenderia owner registration successful. Your application is now pending admin approval.',
+                'user' => [
+                    'id' => $user->id,
+                    'email' => $user->email,
+                    'name' => $user->name,
+                    'displayName' => $user->name,
+                    'role' => $user->role,
+                    'verified' => $user->verified
+                ],
+                'karenderia' => [
+                    'id' => $karenderia->id,
+                    'business_name' => $karenderia->business_name,
+                    'status' => $karenderia->status,
+                    'address' => $karenderia->address
+                ],
+                'access_token' => $token,
+                'token_type' => 'Bearer'
+            ], 201);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Registration failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Login user
      */
     public function login(Request $request): JsonResponse
