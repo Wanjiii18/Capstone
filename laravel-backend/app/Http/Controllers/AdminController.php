@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Controller;
 use App\Models\Karenderia;
 use App\Models\MenuItem;
 use App\Models\Order;

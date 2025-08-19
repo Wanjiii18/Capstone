@@ -149,3 +149,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::put('/users/{userId}/toggle-status', [AdminController::class, 'toggleUserStatus']);
     Route::delete('/users/{userId}', [AdminController::class, 'deleteUser']);
 });
+
+// Fallback route for undefined API routes
+Route::fallback(function () {
+    return response()->json(['message' => 'API route not found'], 404);
+});
