@@ -28,7 +28,53 @@ class AdminUserSeeder extends Seeder
             ]
         );
 
-        // Create a karenderia owner for testing
+        // Create multiple karenderia owners for testing different scenarios
+        User::firstOrCreate(
+            ['email' => 'owner1@kaplato.com'],
+            [
+                'name' => 'Maria Santos',
+                'email' => 'owner1@kaplato.com',
+                'password' => Hash::make('owner123'),
+                'role' => 'karenderia_owner',
+                'username' => 'mariasantos',
+                'verified' => true,
+                'email_verified_at' => now(),
+                'phone_number' => '+639123456789',
+                'address' => '123 Rizal Street, Makati City',
+            ]
+        );
+
+        User::firstOrCreate(
+            ['email' => 'owner2@kaplato.com'],
+            [
+                'name' => 'Linda Cruz',
+                'email' => 'owner2@kaplato.com',
+                'password' => Hash::make('owner123'),
+                'role' => 'karenderia_owner',
+                'username' => 'lindacruz',
+                'verified' => true,
+                'email_verified_at' => now(),
+                'phone_number' => '+639987654321',
+                'address' => '456 Dela Rosa Avenue, Quezon City',
+            ]
+        );
+
+        User::firstOrCreate(
+            ['email' => 'owner3@kaplato.com'],
+            [
+                'name' => 'Roberto Dela Cruz',
+                'email' => 'owner3@kaplato.com',
+                'password' => Hash::make('owner123'),
+                'role' => 'karenderia_owner',
+                'username' => 'robertodc',
+                'verified' => true,
+                'email_verified_at' => now(),
+                'phone_number' => '+639555123456',
+                'address' => '789 Bonifacio Street, Pasig City',
+            ]
+        );
+
+        // Keep the original owner for compatibility
         User::firstOrCreate(
             ['email' => 'owner@kaplato.com'],
             [

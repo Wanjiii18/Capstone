@@ -480,4 +480,197 @@ class UserController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Get user favorites
+     */
+    public function getFavorites(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $favorites = \App\Models\Favorite::with(['menuItem.karenderia'])
+            ->where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($favorite) {
+                return [
+                    'id' => $favorite->id,
+                    'userId' => $favorite->user_id,
+                    'menuItemId' => $favorite->menu_item_id,
+                    'karenderiaId' => $favorite->menuItem->karenderia_id,
+                    'menuItemName' => $favorite->menuItem->name,
+                    'menuItemImage' => $favorite->menuItem->image,
+                    'menuItemPrice' => $favorite->menuItem->price,
+                    'karenderiaName' => $favorite->menuItem->karenderia->name ?? 'Unknown',
+                    'addedAt' => $favorite->created_at
+                ];
+            });
+
+        return response()->json($favorites);
+    }
+
+    /**
+     * Add item to favorites
+     */
+    public function addFavorite(Request $request): JsonResponse
+    {
+        $request->validate([
+            'menuItemId' => 'required|exists:menu_items,id',
+            'karenderiaId' => 'required|exists:karenderias,id'
+        ]);
+
+        $user = $request->user();
+        
+        // Check if already in favorites
+        $existing = \App\Models\Favorite::where([
+            'user_id' => $user->id,
+            'menu_item_id' => $request->menuItemId
+        ])->first();
+
+        if ($existing) {
+            return response()->json(['message' => 'Item already in favorites'], 409);
+        }
+
+        $favorite = \App\Models\Favorite::create([
+            'user_id' => $user->id,
+            'menu_item_id' => $request->menuItemId
+        ]);
+
+        $favorite->load('menuItem.karenderia');
+
+        return response()->json([
+            'id' => $favorite->id,
+            'userId' => $favorite->user_id,
+            'menuItemId' => $favorite->menu_item_id,
+            'karenderiaId' => $favorite->menuItem->karenderia_id,
+            'menuItemName' => $favorite->menuItem->name,
+            'menuItemImage' => $favorite->menuItem->image,
+            'menuItemPrice' => $favorite->menuItem->price,
+            'karenderiaName' => $favorite->menuItem->karenderia->name ?? 'Unknown',
+            'addedAt' => $favorite->created_at
+        ]);
+    }
+
+    /**
+     * Remove item from favorites
+     */
+    public function removeFavorite(Request $request, $id): JsonResponse
+    {
+        $user = $request->user();
+        
+        $favorite = \App\Models\Favorite::where([
+            'id' => $id,
+            'user_id' => $user->id
+        ])->first();
+
+        if (!$favorite) {
+            return response()->json(['error' => 'Favorite not found'], 404);
+        }
+
+        $favorite->delete();
+
+        return response()->json(['message' => 'Removed from favorites']);
+    }
+
+    /**
+     * Get user meal history
+     */
+    public function getMealHistory(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $history = \App\Models\MealHistory::with(['menuItem.karenderia'])
+            ->where('user_id', $user->id)
+            ->orderBy('ordered_at', 'desc')
+            ->get()
+            ->map(function($item) {
+                return [
+                    'id' => $item->id,
+                    'userId' => $item->user_id,
+                    'menuItemId' => $item->menu_item_id,
+                    'karenderiaId' => $item->menuItem->karenderia_id,
+                    'menuItemName' => $item->menuItem->name,
+                    'menuItemImage' => $item->menuItem->image,
+                    'menuItemPrice' => $item->menuItem->price,
+                    'karenderiaName' => $item->menuItem->karenderia->name ?? 'Unknown',
+                    'orderedAt' => $item->ordered_at,
+                    'quantity' => $item->quantity,
+                    'rating' => $item->rating,
+                    'review' => $item->review
+                ];
+            });
+
+        return response()->json($history);
+    }
+
+    /**
+     * Add item to meal history (called when order is completed)
+     */
+    public function addMealHistory(Request $request): JsonResponse
+    {
+        $request->validate([
+            'menuItemId' => 'required|exists:menu_items,id',
+            'karenderiaId' => 'required|exists:karenderias,id',
+            'quantity' => 'required|integer|min:1',
+            'orderId' => 'required|string'
+        ]);
+
+        $user = $request->user();
+
+        $history = \App\Models\MealHistory::create([
+            'user_id' => $user->id,
+            'menu_item_id' => $request->menuItemId,
+            'quantity' => $request->quantity,
+            'order_id' => $request->orderId,
+            'ordered_at' => now()
+        ]);
+
+        $history->load('menuItem.karenderia');
+
+        return response()->json([
+            'id' => $history->id,
+            'userId' => $history->user_id,
+            'menuItemId' => $history->menu_item_id,
+            'karenderiaId' => $history->menuItem->karenderia_id,
+            'menuItemName' => $history->menuItem->name,
+            'menuItemImage' => $history->menuItem->image,
+            'menuItemPrice' => $history->menuItem->price,
+            'karenderiaName' => $history->menuItem->karenderia->name ?? 'Unknown',
+            'orderedAt' => $history->ordered_at,
+            'quantity' => $history->quantity,
+            'rating' => $history->rating,
+            'review' => $history->review
+        ]);
+    }
+
+    /**
+     * Add review to meal history item
+     */
+    public function addMealReview(Request $request, $id): JsonResponse
+    {
+        $request->validate([
+            'rating' => 'required|integer|min:1|max:5',
+            'review' => 'nullable|string|max:1000'
+        ]);
+
+        $user = $request->user();
+        
+        $history = \App\Models\MealHistory::where([
+            'id' => $id,
+            'user_id' => $user->id
+        ])->first();
+
+        if (!$history) {
+            return response()->json(['error' => 'Meal history item not found'], 404);
+        }
+
+        $history->update([
+            'rating' => $request->rating,
+            'review' => $request->review
+        ]);
+
+        return response()->json([
+            'message' => 'Review added successfully',
+            'rating' => $history->rating,
+            'review' => $history->review
+        ]);
+    }
 }

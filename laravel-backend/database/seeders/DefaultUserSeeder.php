@@ -14,11 +14,18 @@ class DefaultUserSeeder extends Seeder
      */
     public function run(): void
     {
-        User::create([
-            'name' => 'Default User',
-            'email' => 'user@example.com',
-            'password' => Hash::make('password'),
-            'email_verified_at' => now(),
-        ]);
+        User::firstOrCreate(
+            ['email' => 'user@example.com'],
+            [
+                'name' => 'Default User',
+                'email' => 'user@example.com',
+                'password' => Hash::make('password'),
+                'email_verified_at' => now(),
+                'role' => 'customer', // Add default role
+            ]
+        );
+
+        $this->command->info('Default user created successfully!');
+        $this->command->info('Default: user@example.com / password');
     }
 }

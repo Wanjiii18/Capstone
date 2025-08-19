@@ -188,4 +188,200 @@ class MenuItemController extends Controller
             'karenderia_id' => $karenderia->id
         ]);
     }
+
+    /**
+     * Search menu items with filters
+     */
+    public function search(Request $request)
+    {
+        $query = MenuItem::with(['karenderia', 'reviews']);
+        
+        // Search by name/description
+        if ($request->has('query') && !empty($request->query)) {
+            $searchTerm = $request->query;
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('name', 'LIKE', "%{$searchTerm}%")
+                  ->orWhere('description', 'LIKE', "%{$searchTerm}%");
+            });
+        }
+        
+        // Filter by category
+        if ($request->has('category') && !empty($request->category)) {
+            $query->where('category', $request->category);
+        }
+        
+        // Filter by price range
+        if ($request->has('priceMin') && is_numeric($request->priceMin)) {
+            $query->where('price', '>=', $request->priceMin);
+        }
+        if ($request->has('priceMax') && is_numeric($request->priceMax)) {
+            $query->where('price', '<=', $request->priceMax);
+        }
+        
+        // Filter by calories
+        if ($request->has('calories') && is_numeric($request->calories)) {
+            $query->where('calories', '<=', $request->calories);
+        }
+        
+        // Filter by allergens (exclude items with these allergens)
+        if ($request->has('allergens') && !empty($request->allergens)) {
+            $allergens = explode(',', $request->allergens);
+            foreach ($allergens as $allergen) {
+                $query->whereJsonDoesntContain('allergens', trim($allergen));
+            }
+        }
+        
+        // Filter by dietary tags
+        if ($request->has('dietary') && !empty($request->dietary)) {
+            $dietary = explode(',', $request->dietary);
+            foreach ($dietary as $tag) {
+                $query->whereJsonContains('dietary_tags', trim($tag));
+            }
+        }
+        
+        // Filter by karenderia
+        if ($request->has('karenderia') && !empty($request->karenderia)) {
+            $query->where('karenderia_id', $request->karenderia);
+        }
+        
+        // Only show available items
+        $query->where('is_available', true);
+        
+        $results = $query->get()->map(function($item) {
+            return [
+                'id' => $item->id,
+                'name' => $item->name,
+                'price' => $item->price,
+                'image' => $item->image,
+                'karenderia_id' => $item->karenderia_id,
+                'karenderia_name' => $item->karenderia->name ?? 'Unknown',
+                'calories' => $item->calories,
+                'allergens' => $item->allergens,
+                'dietary_tags' => $item->dietary_tags,
+                'average_rating' => $item->reviews ? $item->reviews->avg('rating') : null,
+                'total_reviews' => $item->reviews ? $item->reviews->count() : 0,
+                'preparation_time' => $item->preparation_time,
+                'available' => $item->is_available
+            ];
+        });
+        
+        return response()->json(['data' => $results]);
+    }
+
+    /**
+     * Get detailed menu item information
+     */
+    public function getDetails($id)
+    {
+        $menuItem = MenuItem::with(['karenderia', 'reviews.user'])->find($id);
+        
+        if (!$menuItem) {
+            return response()->json(['error' => 'Menu item not found'], 404);
+        }
+        
+        $details = [
+            'id' => $menuItem->id,
+            'name' => $menuItem->name,
+            'price' => $menuItem->price,
+            'description' => $menuItem->description,
+            'image' => $menuItem->image,
+            'karenderia_id' => $menuItem->karenderia_id,
+            'karenderia_name' => $menuItem->karenderia->name ?? 'Unknown',
+            'karenderia_address' => $menuItem->karenderia->address ?? null,
+            'calories' => $menuItem->calories,
+            'protein' => $menuItem->protein,
+            'carbs' => $menuItem->carbs,
+            'fat' => $menuItem->fat,
+            'allergens' => $menuItem->allergens,
+            'ingredients' => $menuItem->ingredients,
+            'dietary_tags' => $menuItem->dietary_tags,
+            'spiciness_level' => $menuItem->spiciness_level,
+            'preparation_time' => $menuItem->preparation_time,
+            'average_rating' => $menuItem->reviews ? $menuItem->reviews->avg('rating') : null,
+            'total_reviews' => $menuItem->reviews ? $menuItem->reviews->count() : 0,
+            'available' => $menuItem->is_available,
+            'category' => $menuItem->category,
+            'reviews' => $menuItem->reviews ? $menuItem->reviews->map(function($review) {
+                return [
+                    'id' => $review->id,
+                    'user_name' => $review->user->name ?? 'Anonymous',
+                    'user_avatar' => $review->user->avatar ?? null,
+                    'rating' => $review->rating,
+                    'comment' => $review->comment,
+                    'created_at' => $review->created_at,
+                    'helpful_count' => $review->helpful_count ?? 0
+                ];
+            })->sortByDesc('created_at')->values() : []
+        ];
+        
+        return response()->json(['data' => $details]);
+    }
+
+    /**
+     * Add a review to a menu item
+     */
+    public function addReview(Request $request, $id)
+    {
+        $request->validate([
+            'rating' => 'required|integer|min:1|max:5',
+            'review' => 'nullable|string|max:1000'
+        ]);
+        
+        $menuItem = MenuItem::find($id);
+        if (!$menuItem) {
+            return response()->json(['error' => 'Menu item not found'], 404);
+        }
+        
+        // Check if user already reviewed this item
+        $existingReview = \App\Models\Review::where([
+            'user_id' => $request->user()->id,
+            'menu_item_id' => $id
+        ])->first();
+        
+        if ($existingReview) {
+            // Update existing review
+            $existingReview->update([
+                'rating' => $request->rating,
+                'comment' => $request->review ?? ''
+            ]);
+            $review = $existingReview;
+        } else {
+            // Create new review
+            $review = \App\Models\Review::create([
+                'user_id' => $request->user()->id,
+                'menu_item_id' => $id,
+                'rating' => $request->rating,
+                'comment' => $request->review ?? ''
+            ]);
+        }
+        
+        return response()->json([
+            'message' => 'Review added successfully',
+            'data' => $review
+        ]);
+    }
+
+    /**
+     * Get reviews for a menu item
+     */
+    public function getReviews($id)
+    {
+        $reviews = \App\Models\Review::with('user')
+            ->where('menu_item_id', $id)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($review) {
+                return [
+                    'id' => $review->id,
+                    'user_name' => $review->user->name ?? 'Anonymous',
+                    'user_avatar' => $review->user->avatar ?? null,
+                    'rating' => $review->rating,
+                    'comment' => $review->comment,
+                    'created_at' => $review->created_at,
+                    'helpful_count' => $review->helpful_count ?? 0
+                ];
+            });
+        
+        return response()->json(['data' => $reviews]);
+    }
 }

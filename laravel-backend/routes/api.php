@@ -9,6 +9,7 @@ use App\Http\Controllers\KarenderiaController;
 use App\Http\Controllers\MealPlanController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\MenuItemController;
+use App\Http\Controllers\RecipeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -75,6 +76,7 @@ Route::prefix('orders')->group(function () {
 // Karenderia routes
 Route::prefix('karenderias')->group(function () {
     Route::get('/', [KarenderiaController::class, 'index']);
+    Route::get('/nearby', [KarenderiaController::class, 'nearby']);
     Route::get('/search', [KarenderiaController::class, 'search']);
     Route::get('/{id}', [KarenderiaController::class, 'show']);
     
@@ -96,12 +98,45 @@ Route::prefix('meal-plans')->group(function () {
 });
 
 // Menu Items routes
-Route::middleware('auth:sanctum')->prefix('menu-items')->group(function () {
-    Route::post('/', [MenuItemController::class, 'store']);
-    Route::get('/', [MenuItemController::class, 'index']);
-    Route::get('/{id}', [MenuItemController::class, 'show']);
-    Route::put('/{id}', [MenuItemController::class, 'update']);
-    Route::delete('/{id}', [MenuItemController::class, 'destroy']);
+Route::prefix('menu-items')->group(function () {
+    // Public routes
+    Route::get('/search', [MenuItemController::class, 'search']);
+    Route::get('/{id}/details', [MenuItemController::class, 'getDetails']);
+    
+    // Protected routes
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/', [MenuItemController::class, 'store']);
+        Route::get('/', [MenuItemController::class, 'index']);
+        Route::get('/{id}', [MenuItemController::class, 'show']);
+        Route::put('/{id}', [MenuItemController::class, 'update']);
+        Route::delete('/{id}', [MenuItemController::class, 'destroy']);
+        
+        // Reviews
+        Route::post('/{id}/reviews', [MenuItemController::class, 'addReview']);
+        Route::get('/{id}/reviews', [MenuItemController::class, 'getReviews']);
+    });
+});
+
+// Recipe Management routes
+Route::middleware('auth:sanctum')->prefix('recipes')->group(function () {
+    Route::get('/', [RecipeController::class, 'index']);
+    Route::post('/', [RecipeController::class, 'store']);
+    Route::get('/stats', [RecipeController::class, 'getStats']);
+    Route::get('/{id}', [RecipeController::class, 'show']);
+    Route::post('/{id}/create-menu-item', [RecipeController::class, 'createMenuItem']);
+});
+
+// User favorites and meal history routes
+Route::middleware('auth:sanctum')->prefix('user')->group(function () {
+    // Favorites
+    Route::get('/favorites', [UserController::class, 'getFavorites']);
+    Route::post('/favorites', [UserController::class, 'addFavorite']);
+    Route::delete('/favorites/{id}', [UserController::class, 'removeFavorite']);
+    
+    // Meal History
+    Route::get('/meal-history', [UserController::class, 'getMealHistory']);
+    Route::post('/meal-history', [UserController::class, 'addMealHistory']);
+    Route::put('/meal-history/{id}/review', [UserController::class, 'addMealReview']);
 });
 
 // Analytics routes for karenderia owners

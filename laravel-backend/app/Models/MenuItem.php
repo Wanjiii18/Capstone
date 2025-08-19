@@ -10,6 +10,7 @@ class MenuItem extends Model
 {
     protected $fillable = [
         'karenderia_id',
+        'recipe_id',
         'name',
         'description',
         'price',
@@ -47,9 +48,38 @@ class MenuItem extends Model
         return $this->belongsTo(Karenderia::class);
     }
 
+    public function recipe(): BelongsTo
+    {
+        return $this->belongsTo(Recipe::class);
+    }
+
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    /**
+     * Get the favorites for this menu item
+     */
+    public function favorites(): HasMany
+    {
+        return $this->hasMany(Favorite::class);
+    }
+
+    /**
+     * Get the reviews for this menu item
+     */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    /**
+     * Get the meal history entries for this menu item
+     */
+    public function mealHistory(): HasMany
+    {
+        return $this->hasMany(MealHistory::class);
     }
 
     // Scope for available items
