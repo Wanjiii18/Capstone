@@ -179,8 +179,6 @@ class KarenderiaController extends Controller
             ]
         ]);
     }
-<<<<<<< Updated upstream
-=======
 
     /**
      * Update karenderia information
@@ -370,5 +368,4 @@ class KarenderiaController extends Controller
 
         return $earthRadius * $c;
     }
->>>>>>> Stashed changes
 }
