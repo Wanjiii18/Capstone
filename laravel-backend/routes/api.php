@@ -10,6 +10,7 @@ use App\Http\Controllers\MealPlanController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\MenuItemController;
 use App\Http\Controllers\RecipeController;
+use App\Http\Controllers\NutritionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -168,4 +169,23 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     
     // User Management
     Route::get('/users', [AdminController::class, 'users']);
+});
+
+// Nutrition routes
+Route::prefix('nutrition')->group(function () {
+    // Menu item nutrition management
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::put('/menu-items/{menuItemId}', [NutritionController::class, 'updateMenuItemNutrition']);
+        Route::post('/menu-items/bulk-update', [NutritionController::class, 'bulkUpdateNutrition']);
+    });
+    
+    // Public nutrition data access
+    Route::get('/menu-items/{menuItemId}', [NutritionController::class, 'getMenuItemNutrition']);
+    Route::get('/search', [NutritionController::class, 'searchByNutrition']);
+    Route::get('/karenderias/{karenderiaId}/stats', [NutritionController::class, 'getMenuNutritionStats']);
+    
+    // User-specific recommendations
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/recommendations', [NutritionController::class, 'getRecommendations']);
+    });
 });
