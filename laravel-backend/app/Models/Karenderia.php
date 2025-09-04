@@ -10,10 +10,14 @@ class Karenderia extends Model
 {
     protected $fillable = [
         'name',
+        'business_name',
         'description',
         'address',
+        'city',
+        'province',
         'phone',
         'email',
+        'business_email',
         'owner_id',
         'latitude',
         'longitude',
@@ -29,7 +33,9 @@ class Karenderia extends Model
         'delivery_fee',
         'delivery_time_minutes',
         'accepts_cash',
-        'accepts_online_payment'
+        'accepts_online_payment',
+        'approved_at',
+        'approved_by'
     ];
 
     protected $casts = [

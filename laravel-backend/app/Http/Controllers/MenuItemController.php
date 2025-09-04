@@ -9,16 +9,43 @@ class MenuItemController extends Controller
 {
     public function index()
     {
-        // For now, return all menu items to debug the issue
-        $menuItems = MenuItem::with('karenderia')->get();
-        return response()->json(['data' => $menuItems]);
+        try {
+            // Check if user is authenticated to filter by their karenderia
+            $user = auth()->user();
+            
+            if ($user && $user->role === 'karenderia_owner') {
+                // If karenderia owner is logged in, show only their menu items
+                $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
+                
+                if ($karenderia) {
+                    $menuItems = MenuItem::with('karenderia')
+                        ->where('karenderia_id', $karenderia->id)
+                        ->get();
+                } else {
+                    $menuItems = collect(); // Empty collection if no karenderia
+                }
+            } else {
+                // For customers or public access, return all menu items
+                $menuItems = MenuItem::with('karenderia')->get();
+            }
+            
+            return response()->json(['data' => $menuItems]);
+        } catch (\Exception $e) {
+            \Log::error('Error loading menu items', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error loading menu items',
+                'data' => []
+            ], 500);
+        }
     }
 
     public function store(Request $request)
     {
         try {
             // Log the incoming request for debugging
-            \Log::info('Menu item creation request:', $request->all());
+            \Log::info('Menu item creation request', ['data' => $request->all()]);
+            \Log::info('Auth user', ['user' => auth()->user() ? auth()->user()->toArray() : null]);
             
             $validatedData = $request->validate([
                 'name' => 'required|string|max:255',
@@ -39,10 +66,36 @@ class MenuItemController extends Controller
                 'is_available' => 'nullable|boolean',
                 'is_popular' => 'nullable|boolean',
                 'preparation_time' => 'nullable|integer|min:0',
+                'preparationTime' => 'nullable|integer|min:0', // Frontend uses this field
                 'created_at' => 'nullable|string',
                 'updated_at' => 'nullable|string'
             ]);
 
+            // Handle frontend field name mapping
+            if (isset($validatedData['preparationTime']) && !isset($validatedData['preparation_time'])) {
+                $validatedData['preparation_time'] = $validatedData['preparationTime'];
+            }
+            unset($validatedData['preparationTime']); // Remove frontend field name
+
+            // Ensure allergens is properly formatted as array
+            if (!isset($validatedData['allergens'])) {
+                $validatedData['allergens'] = [];
+            } elseif (!is_array($validatedData['allergens'])) {
+                $validatedData['allergens'] = [];
+            }
+
+            // Set default values for nutritional information if not provided
+            if (!isset($validatedData['calories']) || $validatedData['calories'] === null) {
+                $validatedData['calories'] = 0; // Default to 0 if not provided
+            }
+
+            // Log what nutritional data we're receiving
+            \Log::info('Nutritional data check', [
+                'calories' => $validatedData['calories'] ?? 'NOT_SET',
+                'allergens' => $validatedData['allergens'] ?? 'NOT_SET',
+                'allergens_count' => is_array($validatedData['allergens'] ?? null) ? count($validatedData['allergens']) : 'NOT_ARRAY'
+            ]);
+            
             // Set default category if not provided
             if (!isset($validatedData['category'])) {
                 $validatedData['category'] = 'Main Dish';
@@ -66,17 +119,45 @@ class MenuItemController extends Controller
             unset($validatedData['created_at']);
             unset($validatedData['updated_at']);
 
-            // If karenderia_id is not provided, use a default one for testing
+            // Get karenderia_id from authenticated user's karenderia
             if (!isset($validatedData['karenderia_id'])) {
-                // For now, just use karenderia_id = 1 for testing
-                // In production, you'll need proper authentication
-                $validatedData['karenderia_id'] = 1;
+                $user = auth()->user();
+                if (!$user) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'User not authenticated'
+                    ], 401);
+                }
+
+                \Log::info('Authenticated user found', ['user_id' => $user->id, 'role' => $user->role]);
+
+                // Find the user's karenderia
+                $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
+                
+                if (!$karenderia) {
+                    \Log::warning('No karenderia found for user', ['user_id' => $user->id]);
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No karenderia found for this user. Please create your karenderia first.',
+                        'debug' => [
+                            'user_id' => $user->id,
+                            'user_role' => $user->role,
+                            'karenderias_count' => \App\Models\Karenderia::count()
+                        ]
+                    ], 400);
+                }
+                
+                $validatedData['karenderia_id'] = $karenderia->id;
+                \Log::info('Found karenderia for user', ['karenderia_id' => $karenderia->id, 'user_id' => $user->id]);
             }
 
+            \Log::info('Creating menu item with data', ['data' => $validatedData]);
             $menuItem = MenuItem::create($validatedData);
 
             // Load the menuItem with its relationships
             $menuItem = MenuItem::with('karenderia')->find($menuItem->id);
+
+            \Log::info('Menu item created successfully', ['id' => $menuItem->id]);
 
             return response()->json([
                 'success' => true,
@@ -98,23 +179,23 @@ class MenuItemController extends Controller
                     'updated_at' => $menuItem->updated_at
                 ]
             ], 201);
-            
         } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Validation error in menu item creation', ['errors' => $e->errors()]);
             return response()->json([
                 'success' => false,
-                'error' => 'Validation failed',
-                'message' => 'Invalid input data',
+                'message' => 'Validation failed',
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
+            \Log::error('Error creating menu item', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'success' => false,
-                'error' => 'Failed to create menu item',
-                'message' => $e->getMessage(),
-                'debug' => [
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine()
-                ]
+                'message' => 'Error creating menu item: ' . $e->getMessage()
             ], 500);
         }
     }

@@ -21,6 +21,7 @@ class MenuItem extends Model
         'is_available',
         'is_featured',
         'preparation_time_minutes',
+        'preparation_time',
         'calories',
         'ingredients',
         'allergens',
