@@ -40,6 +40,34 @@ class AuthController extends Controller
             'verified' => false
         ]);
 
+        // If the user is a karenderia owner, create a basic karenderia for them
+        if ($request->role === 'karenderia_owner') {
+            \App\Models\Karenderia::create([
+                'name' => $request->name . "'s Karenderia",
+                'business_name' => $request->name . "'s Kitchen Business",
+                'description' => 'Welcome to our karenderia! We serve authentic Filipino cuisine.',
+                'address' => 'Please update your address in settings',
+                'city' => 'City',
+                'province' => 'Province',
+                'phone' => '+639000000000',
+                'email' => $request->email,
+                'business_email' => $request->email,
+                'latitude' => 14.5995,
+                'longitude' => 120.9842,
+                'opening_time' => '06:00:00',
+                'closing_time' => '21:00:00',
+                'operating_days' => ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+                'status' => 'pending', // New karenderias start as pending approval
+                'delivery_fee' => 30.00,
+                'delivery_time_minutes' => 30,
+                'accepts_cash' => true,
+                'accepts_online_payment' => false,
+                'average_rating' => 0.0,
+                'total_reviews' => 0,
+                'owner_id' => $user->id
+            ]);
+        }
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([

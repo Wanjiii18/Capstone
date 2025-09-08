@@ -13,96 +13,48 @@ class KarenderiaController extends Controller
      */
     public function index(): JsonResponse
     {
-        // For now, return mock data that matches your frontend expectations
-        $karenderias = [
-            [
-                'id' => 1,
-                'name' => 'Mama\'s Kitchen',
-                'description' => 'Authentic Filipino home cooking',
-                'address' => '123 Main St, Cebu City',
-                'latitude' => 10.3157,
-                'longitude' => 123.8854,
-                'rating' => 4.5,
-                'isOpen' => true,
-                'cuisine' => 'Filipino',
-                'priceRange' => '₱₱',
-                'imageUrl' => '/assets/images/restaurant-placeholder.jpg',
-                'deliveryTime' => '25-35 min',
-                'deliveryFee' => 25,
-                'minimumOrder' => 150,
-                'isVerified' => true,
-                'specialties' => ['Adobo', 'Lechon', 'Kare-kare'],
-                'operatingHours' => [
-                    'monday' => '8:00 AM - 9:00 PM',
-                    'tuesday' => '8:00 AM - 9:00 PM',
-                    'wednesday' => '8:00 AM - 9:00 PM',
-                    'thursday' => '8:00 AM - 9:00 PM',
-                    'friday' => '8:00 AM - 10:00 PM',
-                    'saturday' => '8:00 AM - 10:00 PM',
-                    'sunday' => '9:00 AM - 9:00 PM'
-                ]
-            ],
-            [
-                'id' => 2,
-                'name' => 'Tita Rosa\'s Lutong Bahay',
-                'description' => 'Traditional Filipino dishes made with love',
-                'address' => '456 Colon St, Cebu City',
-                'latitude' => 10.2937,
-                'longitude' => 123.9013,
-                'rating' => 4.3,
-                'isOpen' => true,
-                'cuisine' => 'Filipino',
-                'priceRange' => '₱',
-                'imageUrl' => '/assets/images/restaurant-placeholder.jpg',
-                'deliveryTime' => '20-30 min',
-                'deliveryFee' => 20,
-                'minimumOrder' => 100,
-                'isVerified' => true,
-                'specialties' => ['Sinigang', 'Tinola', 'Bistek'],
-                'operatingHours' => [
-                    'monday' => '7:00 AM - 8:00 PM',
-                    'tuesday' => '7:00 AM - 8:00 PM',
-                    'wednesday' => '7:00 AM - 8:00 PM',
-                    'thursday' => '7:00 AM - 8:00 PM',
-                    'friday' => '7:00 AM - 9:00 PM',
-                    'saturday' => '7:00 AM - 9:00 PM',
-                    'sunday' => '8:00 AM - 8:00 PM'
-                ]
-            ],
-            [
-                'id' => 3,
-                'name' => 'Kuya Jun\'s Carinderia',
-                'description' => 'Quick and affordable Filipino meals',
-                'address' => '789 Lahug, Cebu City',
-                'latitude' => 10.3369,
-                'longitude' => 123.9139,
-                'rating' => 4.0,
-                'isOpen' => false,
-                'cuisine' => 'Filipino',
-                'priceRange' => '₱',
-                'imageUrl' => '/assets/images/restaurant-placeholder.jpg',
-                'deliveryTime' => '15-25 min',
-                'deliveryFee' => 15,
-                'minimumOrder' => 80,
-                'isVerified' => false,
-                'specialties' => ['Pancit', 'Lumpia', 'Menudo'],
-                'operatingHours' => [
-                    'monday' => '6:00 AM - 7:00 PM',
-                    'tuesday' => '6:00 AM - 7:00 PM',
-                    'wednesday' => '6:00 AM - 7:00 PM',
-                    'thursday' => '6:00 AM - 7:00 PM',
-                    'friday' => '6:00 AM - 8:00 PM',
-                    'saturday' => '6:00 AM - 8:00 PM',
-                    'sunday' => 'Closed'
-                ]
-            ]
-        ];
+        try {
+            // Get all active karenderias from database
+            $karenderias = \App\Models\Karenderia::where('status', 'active')
+                ->with('owner')
+                ->get()
+                ->map(function ($karenderia) {
+                    return [
+                        'id' => $karenderia->id,
+                        'name' => $karenderia->name,
+                        'business_name' => $karenderia->business_name,
+                        'description' => $karenderia->description,
+                        'address' => $karenderia->address,
+                        'latitude' => (float) $karenderia->latitude,
+                        'longitude' => (float) $karenderia->longitude,
+                        'rating' => (float) $karenderia->average_rating,
+                        'isOpen' => true, // You can add business logic here
+                        'cuisine' => 'Filipino',
+                        'priceRange' => '₱₱',
+                        'imageUrl' => $karenderia->logo_url ?? '/assets/images/restaurant-placeholder.jpg',
+                        'deliveryTime' => $karenderia->delivery_time_minutes . ' min',
+                        'deliveryFee' => (float) $karenderia->delivery_fee,
+                        'minimumOrder' => 150, // Default value, you can add this to the model
+                        'isVerified' => $karenderia->status === 'active',
+                        'specialties' => ['Filipino Cuisine'], // You can expand this
+                        'phone' => $karenderia->phone,
+                        'email' => $karenderia->email,
+                        'status' => $karenderia->status,
+                        'owner_name' => $karenderia->owner->name ?? 'Unknown'
+                    ];
+                });
 
-        return response()->json([
-            'success' => true,
-            'data' => $karenderias,
-            'message' => 'Karenderias retrieved successfully'
-        ]);
+            return response()->json([
+                'success' => true,
+                'data' => $karenderias
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving karenderias: ' . $e->getMessage(),
+                'data' => []
+            ], 500);
+        }
     }
 
     /**
@@ -110,32 +62,51 @@ class KarenderiaController extends Controller
      */
     public function show($id): JsonResponse
     {
-        // This would normally fetch from database
-        // For now, return mock data
-        $karenderia = [
-            'id' => $id,
-            'name' => 'Mama\'s Kitchen',
-            'description' => 'Authentic Filipino home cooking',
-            'address' => '123 Main St, Cebu City',
-            'latitude' => 10.3157,
-            'longitude' => 123.8854,
-            'rating' => 4.5,
-            'isOpen' => true,
-            'cuisine' => 'Filipino',
-            'priceRange' => '₱₱',
-            'imageUrl' => '/assets/images/restaurant-placeholder.jpg',
-            'deliveryTime' => '25-35 min',
-            'deliveryFee' => 25,
-            'minimumOrder' => 150,
-            'isVerified' => true,
-            'specialties' => ['Adobo', 'Lechon', 'Kare-kare']
-        ];
+        try {
+            $karenderia = \App\Models\Karenderia::with('owner')->find($id);
+            
+            if (!$karenderia) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Karenderia not found'
+                ], 404);
+            }
 
-        return response()->json([
-            'success' => true,
-            'data' => $karenderia,
-            'message' => 'Karenderia retrieved successfully'
-        ]);
+            $data = [
+                'id' => $karenderia->id,
+                'name' => $karenderia->name,
+                'business_name' => $karenderia->business_name,
+                'description' => $karenderia->description,
+                'address' => $karenderia->address,
+                'latitude' => (float) $karenderia->latitude,
+                'longitude' => (float) $karenderia->longitude,
+                'rating' => (float) $karenderia->average_rating,
+                'isOpen' => $karenderia->status === 'active',
+                'cuisine' => 'Filipino',
+                'priceRange' => '₱₱',
+                'imageUrl' => $karenderia->logo_url ?? '/assets/images/restaurant-placeholder.jpg',
+                'deliveryTime' => $karenderia->delivery_time_minutes . ' min',
+                'deliveryFee' => (float) $karenderia->delivery_fee,
+                'minimumOrder' => 150,
+                'isVerified' => $karenderia->status === 'active',
+                'specialties' => ['Filipino Cuisine'],
+                'phone' => $karenderia->phone,
+                'email' => $karenderia->email,
+                'status' => $karenderia->status,
+                'owner_name' => $karenderia->owner->name ?? 'Unknown'
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $data,
+                'message' => 'Karenderia retrieved successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving karenderia: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -367,5 +338,49 @@ class KarenderiaController extends Controller
         $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
 
         return $earthRadius * $c;
+    }
+
+    /**
+     * Get the current authenticated user's karenderia
+     */
+    public function getMyKarenderia(): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
+
+            if ($user->role !== 'karenderia_owner') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User is not a karenderia owner'
+                ], 403);
+            }
+
+            $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
+            
+            if (!$karenderia) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No karenderia found for this owner'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $karenderia
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving karenderia: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

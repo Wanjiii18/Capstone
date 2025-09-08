@@ -83,6 +83,7 @@ Route::prefix('karenderias')->group(function () {
     
     // Protected routes for karenderia owners
     Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/my-karenderia', [KarenderiaController::class, 'getMyKarenderia']);
         Route::post('/', [KarenderiaController::class, 'store']);
         Route::put('/{id}', [KarenderiaController::class, 'update']);
         Route::delete('/{id}', [KarenderiaController::class, 'destroy']);

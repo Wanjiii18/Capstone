@@ -104,9 +104,9 @@ class AdminUserSeeder extends Seeder
             ]
         );
 
-        $this->command->info('Admin user and test accounts created successfully!');
-        $this->command->info('Admin: admin@kaplato.com / admin123');
-        $this->command->info('Owner: owner@kaplato.com / owner123');
-        $this->command->info('Customer: customer@kaplato.com / customer123');
+        // $this->command->info('Admin user and test accounts created successfully!');
+        // $this->command->info('Admin: admin@kaplato.com / admin123');
+        // $this->command->info('Owner: owner@kaplato.com / owner123');
+        // $this->command->info('Customer: customer@kaplato.com / customer123');
     }
 }
