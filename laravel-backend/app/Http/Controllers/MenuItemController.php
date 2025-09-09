@@ -14,6 +14,94 @@ class MenuItemController extends Controller
         return response()->json(['data' => $menuItems]);
     }
 
+    public function search(Request $request)
+    {
+        try {
+            $karenderiaId = $request->query('karenderia');
+            $searchTerm = $request->query('search');
+            $userId = $request->query('user_id'); // Optional user ID for allergy checking
+
+            $query = MenuItem::query();
+
+            // Filter by karenderia if provided
+            if ($karenderiaId) {
+                $query->where('karenderia_id', $karenderiaId);
+            }
+
+            // Filter by search term if provided
+            if ($searchTerm) {
+                $query->where(function($q) use ($searchTerm) {
+                    $q->where('name', 'like', "%{$searchTerm}%")
+                      ->orWhere('description', 'like', "%{$searchTerm}%")
+                      ->orWhere('category', 'like', "%{$searchTerm}%");
+                });
+            }
+
+            // Get user allergens if user ID is provided
+            $userAllergens = [];
+            if ($userId) {
+                $user = \App\Models\User::find($userId);
+                if ($user) {
+                    $userAllergens = $user->allergens()->pluck('name')->toArray();
+                }
+            }
+
+            $menuItems = $query->get()->map(function ($item) use ($userAllergens) {
+                $itemAllergens = is_array($item->allergens) ? $item->allergens : (is_string($item->allergens) ? json_decode($item->allergens, true) : []);
+                
+                // Check for allergy warnings
+                $allergyWarnings = [];
+                $hasDangerousAllergens = false;
+                
+                if (!empty($userAllergens) && !empty($itemAllergens)) {
+                    foreach ($itemAllergens as $allergen) {
+                        if (in_array(strtolower($allergen), array_map('strtolower', $userAllergens))) {
+                            $allergyWarnings[] = $allergen;
+                            $hasDangerousAllergens = true;
+                        }
+                    }
+                }
+
+                return [
+                    'id' => $item->id,
+                    'name' => $item->name,
+                    'price' => (float) $item->price,
+                    'description' => $item->description,
+                    'ingredients' => is_array($item->ingredients) ? $item->ingredients : (is_string($item->ingredients) ? json_decode($item->ingredients, true) : []),
+                    'allergens' => $itemAllergens,
+                    'category' => $item->category ?: 'Main Dish',
+                    'isAvailable' => $item->is_available ?? true,
+                    'imageUrl' => $item->image_url,
+                    'karenderia_id' => $item->karenderia_id,
+                    'calories' => $item->calories,
+                    'created_at' => $item->created_at,
+                    'updated_at' => $item->updated_at,
+                    // Allergy warning fields
+                    'allergyWarnings' => $allergyWarnings,
+                    'hasDangerousAllergens' => $hasDangerousAllergens,
+                    'allergyMessage' => $hasDangerousAllergens 
+                        ? "⚠️ WARNING: Contains " . implode(', ', $allergyWarnings) . " - you are allergic to these ingredients!"
+                        : null
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $menuItems,
+                'message' => "Found {$menuItems->count()} menu items",
+                'userAllergensChecked' => !empty($userAllergens),
+                'userAllergens' => $userAllergens
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to search menu items',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function store(Request $request)
     {
         try {

@@ -99,6 +99,10 @@ Route::prefix('meal-plans')->group(function () {
 });
 
 // Menu Items routes
+Route::prefix('menu-items')->group(function () {
+    Route::get('/search', [MenuItemController::class, 'search']); // Public search endpoint
+});
+
 Route::middleware('auth:sanctum')->prefix('menu-items')->group(function () {
     Route::post('/', [MenuItemController::class, 'store']);
     Route::get('/', [MenuItemController::class, 'index']);
