@@ -403,4 +403,110 @@ class KarenderiaController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get nearby karenderias within radius
+     */
+    public function nearby(Request $request): JsonResponse
+    {
+        try {
+            $latitude = $request->query('latitude');
+            $longitude = $request->query('longitude');
+            $radius = $request->query('radius', 1000); // Default 1km
+
+            if (!$latitude || !$longitude) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Latitude and longitude are required'
+                ], 400);
+            }
+
+            // Get all active karenderias
+            $karenderias = \App\Models\Karenderia::where('status', 'active')
+                ->with(['owner:id,name,email', 'menuItems'])
+                ->get();
+
+            // Calculate distances and filter by radius
+            $nearbyKarenderias = $karenderias->filter(function ($karenderia) use ($latitude, $longitude, $radius) {
+                $distance = $this->calculateDistance(
+                    $latitude, 
+                    $longitude, 
+                    $karenderia->latitude, 
+                    $karenderia->longitude
+                );
+                
+                // Add distance to the model
+                $karenderia->distance = $distance;
+                
+                return $distance <= $radius;
+            })->sortBy('distance')->values()->map(function ($karenderia) {
+                return [
+                    'id' => $karenderia->id,
+                    'name' => $karenderia->name,
+                    'description' => $karenderia->description,
+                    'address' => $karenderia->address,
+                    'latitude' => $karenderia->latitude,
+                    'longitude' => $karenderia->longitude,
+                    'distance' => round($karenderia->distance, 2), // Distance in meters
+                    'rating' => $karenderia->average_rating,
+                    'isOpen' => $this->isKarenderiaOpen($karenderia),
+                    'cuisine' => 'Filipino',
+                    'priceRange' => '₱₱',
+                    'imageUrl' => $karenderia->logo_url ?: '/assets/images/restaurant-placeholder.jpg',
+                    'deliveryTime' => $karenderia->delivery_time_minutes . ' min',
+                    'deliveryFee' => $karenderia->delivery_fee,
+                    'status' => $karenderia->status,
+                    'phone' => $karenderia->phone,
+                    'email' => $karenderia->email,
+                    'operating_hours' => $this->formatOperatingHours($karenderia->operating_days),
+                    'accepts_cash' => $karenderia->accepts_cash,
+                    'accepts_online_payment' => $karenderia->accepts_online_payment,
+                    'menu_items_count' => $karenderia->menuItems->count(),
+                    'owner' => $karenderia->owner ? $karenderia->owner->name : 'Unknown'
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $nearbyKarenderias,
+                'meta' => [
+                    'total' => $nearbyKarenderias->count(),
+                    'radius' => $radius,
+                    'center' => ['lat' => $latitude, 'lng' => $longitude]
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error in nearby karenderias: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve nearby karenderias',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Calculate distance between two coordinates using Haversine formula
+     */
+    private function calculateDistance($lat1, $lng1, $lat2, $lng2): float
+    {
+        $earthRadius = 6371000; // Earth's radius in meters
+
+        $lat1Rad = deg2rad($lat1);
+        $lng1Rad = deg2rad($lng1);
+        $lat2Rad = deg2rad($lat2);
+        $lng2Rad = deg2rad($lng2);
+
+        $deltaLat = $lat2Rad - $lat1Rad;
+        $deltaLng = $lng2Rad - $lng1Rad;
+
+        $a = sin($deltaLat / 2) * sin($deltaLat / 2) +
+             cos($lat1Rad) * cos($lat2Rad) *
+             sin($deltaLng / 2) * sin($deltaLng / 2);
+
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        return $earthRadius * $c;
+    }
 }

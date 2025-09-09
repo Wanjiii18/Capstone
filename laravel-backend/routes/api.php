@@ -77,6 +77,7 @@ Route::prefix('orders')->group(function () {
 Route::prefix('karenderias')->group(function () {
     Route::get('/', [KarenderiaController::class, 'index']);
     Route::get('/search', [KarenderiaController::class, 'search']);
+    Route::get('/nearby', [KarenderiaController::class, 'nearby']);
     Route::get('/{id}', [KarenderiaController::class, 'show']);
     
     // Protected routes for karenderia owners
