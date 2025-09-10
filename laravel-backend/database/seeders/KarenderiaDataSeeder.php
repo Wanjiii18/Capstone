@@ -33,6 +33,7 @@ class KarenderiaDataSeeder extends Seeder
             'name' => 'Lola Maria\'s Kitchen',
             'owner_id' => $owner->id,
         ], [
+            'business_name' => 'Lola Maria\'s Kitchen', // Added business_name
             'description' => 'Authentic Filipino home-cooked meals served with love',
             'address' => '123 Rizal Street, Makati City, Metro Manila',
             'phone' => '+639123456789',
@@ -55,6 +56,7 @@ class KarenderiaDataSeeder extends Seeder
             'name' => 'Tita Linda\'s Lutong Bahay',
             'owner_id' => $owner->id,
         ], [
+            'business_name' => 'Tita Linda\'s Lutong Bahay', // Added business_name
             'description' => 'Traditional Filipino comfort food',
             'address' => '456 Dela Rosa Avenue, Quezon City, Metro Manila',
             'phone' => '+639987654321',

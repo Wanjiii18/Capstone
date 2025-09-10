@@ -7,7 +7,7 @@
     <div class="flex space-x-4 border-b pb-2">
         <a href="{{ route('dashboard') }}" class="text-gray-600 hover:text-blue-600">Overview</a>
         <a href="{{ route('dashboard.karenderia') }}" class="text-blue-600 border-b-2 border-blue-600 pb-1">Carinderias</a>
-        <a href="{{ route('dashboard.meals') }}" class="text-gray-600 hover:text-blue-600">Meals</a>
+        <a href="{{ route('dashboard.menu') }}" class="text-gray-600 hover:text-blue-600">Meals</a>
         <a href="{{ route('dashboard.users') }}" class="text-gray-600 hover:text-blue-600">Users</a>
         <a href="{{ route('dashboard.reports') }}" class="text-gray-600 hover:text-blue-600">Reports</a>
     </div>

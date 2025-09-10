@@ -1,18 +1,17 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-<<<<<<< Updated upstream
-=======
+
 use App\Http\Controllers\web\AuthController as WebAuthController;
 use App\Http\Controllers\web\DashController;
 use App\Http\Controllers\web\KarenderiaController;
->>>>>>> Stashed changes
+use App\Http\Controllers\web\MenuItemController;
+use App\Http\Controllers\web\UserController;
+
 
 Route::get('/', function () {
     return view('welcome');
 });
-<<<<<<< Updated upstream
-=======
 
 // Show login and registration forms
 Route::get('login', [WebAuthController::class, 'showLoginForm'])->name('login');
@@ -27,18 +26,20 @@ Route::post('logout', [WebAuthController::class, 'logout'])->name('logout');
 
 // Dashboard route
 Route::get('dashboard', [DashController::class, 'showMainDashboard'])->name('dashboard');
-Route::get('dashboard/karenderia', [DashController::class, 'showKarenderiaDash'])->name('dashboard.karenderia');
-Route::get('dashboard/meals', [DashController::class, 'showMealDashboard'])->name('dashboard.meals');
-Route::get('dashboard/users', [DashController::class, 'showUserDashboard'])->name('dashboard.users');
+Route::get('dashboard/karenderia', [KarenderiaController::class, 'showKarenderiaDashboard'])->name('dashboard.karenderia');
+Route::get('dashboard/menu', [MenuItemController::class, 'showMenuDashboard'])->name('dashboard.menu');
+Route::get('/dashboard/meals', [MenuItemController::class, 'showMenuDashboard'])->name('dashboard.meals');
+Route::get('dashboard/users', [UserController::class, 'showUserDashboard'])->name('dashboard.users');
 Route::get('dashboard/reports', [DashController::class, 'showReportDashboard'])->name('dashboard.reports');
 
-// Karenderia route
-Route::get('karenderia/profile', [KarenderiaController::class, 'showKarenderiaProfile'])->name('karenderia.profile');
-
-
+// Details Route
+// Route::get('karenderia/profile', [KarenderiaController::class, 'showKarenderiaProfile'])->name('karenderia.profile');
+Route::get('karenderias/{id}/profile', [KarenderiaController::class, 'showKarenderiaProfile'])->name('dashboardProfile.karenderiaProfile');
+Route::get('menus/{id}/profile', [MenuItemController::class, 'show'])->name('dashboardProfile.menuItemProfile');
+Route::get('users/{id}/profile', [UserController::class, 'show'])->name('dashboardProfile.userProfile');
 
 // Fallback route for undefined web routes
 Route::fallback(function () {
     return response()->view('errors.404', [], 404);
 });
->>>>>>> Stashed changes
+

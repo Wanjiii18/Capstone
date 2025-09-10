@@ -17,8 +17,8 @@ class DashController extends Controller
         return view('dashboard.karenderiaDash');
     }
 
-    public function showMealDashboard(){
-        return view('dashboard.mealDash');
+    public function showMenuDashboard(){
+        return view('dashboard.menuDash');
     }
 
     public function showUserDashboard(){
