@@ -403,19 +403,17 @@ class KarenderiaController extends Controller
             ], 500);
         }
     }
-<<<<<<< Updated upstream
-=======
 
     /**
-     * Get nearby karenderias within radius
+     * Get nearby karenderias based on location
      */
     public function nearby(Request $request): JsonResponse
     {
         try {
-            $latitude = $request->query('latitude');
-            $longitude = $request->query('longitude');
-            $radius = $request->query('radius', 1000); // Default 1km
-
+            $latitude = $request->get('latitude');
+            $longitude = $request->get('longitude');
+            $radius = $request->get('radius', 5000); // Default 5km radius
+            
             if (!$latitude || !$longitude) {
                 return response()->json([
                     'success' => false,
@@ -426,73 +424,67 @@ class KarenderiaController extends Controller
             // Get all active karenderias
             $karenderias = \App\Models\Karenderia::where('status', 'active')
                 ->with(['owner:id,name,email', 'menuItems'])
-                ->get();
-
-            // Calculate distances and filter by radius
-            $nearbyKarenderias = $karenderias->filter(function ($karenderia) use ($latitude, $longitude, $radius) {
-                $distance = $this->calculateDistance(
-                    $latitude, 
-                    $longitude, 
-                    $karenderia->latitude, 
-                    $karenderia->longitude
-                );
-                
-                // Add distance to the model
-                $karenderia->distance = $distance;
-                
-                return $distance <= $radius;
-            })->sortBy('distance')->values()->map(function ($karenderia) {
-                return [
-                    'id' => $karenderia->id,
-                    'name' => $karenderia->name,
-                    'description' => $karenderia->description,
-                    'address' => $karenderia->address,
-                    'latitude' => $karenderia->latitude,
-                    'longitude' => $karenderia->longitude,
-                    'distance' => round($karenderia->distance, 2), // Distance in meters
-                    'rating' => $karenderia->average_rating,
-                    'isOpen' => $karenderia->status === 'active',
-                    'cuisine' => 'Filipino',
-                    'priceRange' => '₱₱',
-                    'imageUrl' => $karenderia->logo_url ?: '/assets/images/restaurant-placeholder.jpg',
-                    'deliveryTime' => $karenderia->delivery_time_minutes . ' min',
-                    'deliveryFee' => $karenderia->delivery_fee,
-                    'status' => $karenderia->status,
-                    'phone' => $karenderia->phone,
-                    'email' => $karenderia->email,
-                    'operating_hours' => $karenderia->operating_days ?: 'Mon-Sun: 8:00 AM - 8:00 PM',
-                    'accepts_cash' => $karenderia->accepts_cash,
-                    'accepts_online_payment' => $karenderia->accepts_online_payment,
-                    'menu_items_count' => 0,
-                    'owner' => 'Owner'
-                ];
-            });
+                ->get()
+                ->map(function ($karenderia) use ($latitude, $longitude) {
+                    // Calculate distance
+                    $distance = $this->calculateDistance(
+                        $latitude, 
+                        $longitude, 
+                        $karenderia->latitude, 
+                        $karenderia->longitude
+                    );
+                    
+                    return [
+                        'id' => $karenderia->id,
+                        'name' => $karenderia->name,
+                        'description' => $karenderia->description,
+                        'address' => $karenderia->address,
+                        'latitude' => $karenderia->latitude,
+                        'longitude' => $karenderia->longitude,
+                        'distance' => round($distance * 1000), // Convert to meters
+                        'rating' => $karenderia->rating ?: 4.0,
+                        'average_rating' => $karenderia->rating ?: 4.0,
+                        'isOpen' => $this->isKarenderiaOpen($karenderia),
+                        'cuisine' => 'Filipino',
+                        'priceRange' => '₱₱',
+                        'imageUrl' => $karenderia->logo_url ?: '/assets/images/restaurant-placeholder.jpg',
+                        'deliveryTime' => ($karenderia->delivery_time_minutes ?: 30) . ' min',
+                        'delivery_time_minutes' => $karenderia->delivery_time_minutes ?: 30,
+                        'deliveryFee' => $karenderia->delivery_fee ?: 50,
+                        'phone' => $karenderia->phone,
+                        'email' => $karenderia->email,
+                        'status' => $karenderia->status,
+                        'menu_items_count' => $karenderia->menuItems->count(),
+                        'owner' => $karenderia->owner ? $karenderia->owner->name : 'Unknown'
+                    ];
+                })
+                ->filter(function ($karenderia) use ($radius) {
+                    // Filter by radius (in meters)
+                    return $karenderia['distance'] <= $radius;
+                })
+                ->sortBy('distance')
+                ->values();
 
             return response()->json([
                 'success' => true,
-                'data' => $nearbyKarenderias,
-                'meta' => [
-                    'total' => $nearbyKarenderias->count(),
-                    'radius' => $radius,
-                    'center' => ['lat' => $latitude, 'lng' => $longitude]
-                ]
+                'data' => $karenderias,
+                'message' => 'Found ' . $karenderias->count() . ' karenderias within ' . round($radius/1000, 1) . 'km'
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get nearby karenderias',
-                'error' => $e->getMessage()
+                'message' => 'Error finding nearby karenderias: ' . $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * Calculate distance between two points in meters using Haversine formula
+     * Calculate distance between two coordinates using Haversine formula
      */
-    private function calculateDistance($lat1, $lng1, $lat2, $lng2): float
+    private function calculateDistance($lat1, $lng1, $lat2, $lng2)
     {
-        $earthRadius = 6371000; // Earth's radius in meters
+        $earthRadius = 6371; // Earth's radius in kilometers
 
         $lat1Rad = deg2rad($lat1);
         $lng1Rad = deg2rad($lng1);
@@ -554,5 +546,4 @@ class KarenderiaController extends Controller
             ], 500);
         }
     }
->>>>>>> Stashed changes
 }
