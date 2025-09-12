@@ -19,59 +19,54 @@
             </div>
         </div>
     </div>
-    
-<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-    <div class="bg-white p-4 rounded-lg shadow">
-        <div class="flex items-center justify-between">
-            <h2 class="text-sm font-medium text-gray-600">Total Users</h2>
-            <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 12a5 5 0 100-10 5 5 0 000 10zm-7 8a7 7 0 0114 0H3z" />
-            </svg>
-        </div>
-        <p class="text-2xl font-bold">{{ $totalUsers ?? '...' }}</p>
-        <p class="text-xs text-green-600">{{ $usersGrowth ?? '' }}</p>
-    </div>
-    <div class="bg-white p-4 rounded-lg shadow">
-        <div class="flex items-center justify-between">
-            <h2 class="text-sm font-medium text-gray-600">Active Carinderias</h2>
-            <svg class="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8 12H6v-2h2v2zm6 0h-2v-2h2v2z" />
-            </svg>
-        </div>
-        <p class="text-2xl font-bold">{{ $activeCarinderias ?? '...' }}</p>
-        <p class="text-xs text-green-600">{{ $carinderiasGrowth ?? '' }}</p>
-    </div>
-    <div class="bg-white p-4 rounded-lg shadow">
-        <div class="flex items-center justify-between">
-            <h2 class="text-sm font-medium text-gray-600">Meals Posted Today</h2>
-            <svg class="w-6 h-6 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8 12H6v-2h2v2zm6 0h-2v-2h2v2z" />
-            </svg>
-        </div>
-        <p class="text-2xl font-bold">{{ $mealsToday ?? '...' }}</p>
-        <p class="text-xs text-orange-600">{{ $mealsGrowth ?? '' }}</p>
-    </div>
-    <div class="bg-white p-4 rounded-lg shadow">
-        <div class="flex items-center justify-between">
-            <h2 class="text-sm font-medium text-gray-600">Avg Rating</h2>
-            <svg class="w-6 h-6 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8 12H6v-2h2v2zm6 0h-2v-2h2v2z" />
-            </svg>
-        </div>
-        <p class="text-2xl font-bold">{{ $avgRating ?? '...' }}</p>
-        <p class="text-xs text-yellow-600">{{ $avgRatingLabel ?? 'Platform average' }}</p>
-    </div>
-</div>
 
-    <div class="p-6">
-        <!-- Stats Cards -->
-        @yield('stats')
-        <!-- Tabs -->
-        @yield('tabs')
+    <!-- Sidebar and Main Content -->
+    <div class="flex">
+        <!-- Sidebar -->
+        <div class="w-1/12 bg-gray-100 p-4 min-h-screen">
+            <ul class="space-y-4">
+                <li>
+                    <a href="{{ route('dashboard') }}" 
+                    class="{{ Route::is('dashboard') ? 'text-blue-600 underline' : 'text-gray-600 hover:text-blue-600' }}">
+                    Overview
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('dashboard.karenderia') }}" 
+                    class="{{ Route::is('dashboard.karenderia') ? 'text-blue-600 underline' : 'text-gray-600 hover:text-blue-600' }}">
+                    Carinderias
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('dashboard.menu') }}" 
+                    class="{{ Route::is('dashboard.menu') ? 'text-blue-600 underline' : 'text-gray-600 hover:text-blue-600' }}">
+                    Meals
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('dashboard.users') }}" 
+                    class="{{ Route::is('dashboard.users') ? 'text-blue-600 underline' : 'text-gray-600 hover:text-blue-600' }}">
+                    Users
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('dashboard.reports') }}" 
+                    class="{{ Route::is('dashboard.reports') ? 'text-blue-600 underline' : 'text-gray-600 hover:text-blue-600' }}">
+                    Reports
+                    </a>
+                </li>
+            </ul>
+        </div>
+
         <!-- Main Content -->
-        @yield('content')
+        <div class="flex-1 p-6">
+            <!-- Stats Cards -->
+            @yield('stats')
+            <!-- Tabs -->
+            @yield('tabs')
+            <!-- Main Content -->
+            @yield('content')
+        </div>
     </div>
-
-    
 </body>
 </html>

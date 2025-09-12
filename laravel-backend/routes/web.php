@@ -28,7 +28,7 @@ Route::post('logout', [WebAuthController::class, 'logout'])->name('logout');
 Route::get('dashboard', [DashController::class, 'showMainDashboard'])->name('dashboard');
 Route::get('dashboard/karenderia', [KarenderiaController::class, 'showKarenderiaDashboard'])->name('dashboard.karenderia');
 Route::get('dashboard/menu', [MenuItemController::class, 'showMenuDashboard'])->name('dashboard.menu');
-Route::get('/dashboard/meals', [MenuItemController::class, 'showMenuDashboard'])->name('dashboard.meals');
+Route::get('dashboard/meals', [MenuItemController::class, 'showMenuDashboard'])->name('dashboard.meals');
 Route::get('dashboard/users', [UserController::class, 'showUserDashboard'])->name('dashboard.users');
 Route::get('dashboard/reports', [DashController::class, 'showReportDashboard'])->name('dashboard.reports');
 
