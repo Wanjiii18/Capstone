@@ -110,6 +110,7 @@ class AuthController extends Controller
 
             // Create karenderia business record
             $karenderia = $user->karenderia()->create([
+                'name' => $request->business_name, // Use business name as the primary name
                 'business_name' => $request->business_name,
                 'description' => $request->description,
                 'address' => $request->address,
@@ -128,7 +129,10 @@ class AuthController extends Controller
                 'accepts_online_payment' => $request->accepts_online_payment ?? false,
                 'status' => 'pending', // Requires admin approval
                 'approved_at' => null,
-                'approved_by' => null
+                'approved_by' => null,
+                // Required fields that were missing
+                'average_rating' => 0.0, // Default rating for new karenderia
+                'total_reviews' => 0     // Default review count for new karenderia
             ]);
 
             $token = $user->createToken('auth_token')->plainTextToken;
@@ -145,6 +149,7 @@ class AuthController extends Controller
                 ],
                 'karenderia' => [
                     'id' => $karenderia->id,
+                    'name' => $karenderia->name,
                     'business_name' => $karenderia->business_name,
                     'status' => $karenderia->status,
                     'address' => $karenderia->address

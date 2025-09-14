@@ -152,7 +152,16 @@ class KarenderiaController extends Controller
     public function myKarenderia(Request $request): JsonResponse
     {
         try {
-            $user = $request->user();
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated',
+                    'data' => null
+                ], 401);
+            }
+            
             $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
             
             if (!$karenderia) {
@@ -168,6 +177,7 @@ class KarenderiaController extends Controller
                 'data' => [
                     'id' => $karenderia->id,
                     'name' => $karenderia->name,
+                    'business_name' => $karenderia->business_name,
                     'description' => $karenderia->description,
                     'address' => $karenderia->address,
                     'phone' => $karenderia->phone,
@@ -199,6 +209,71 @@ class KarenderiaController extends Controller
     }
 
     /**
+     * Update current user's karenderia location coordinates
+     */
+    public function updateMyKarenderiaLocation(Request $request): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated',
+                    'data' => null
+                ], 401);
+            }
+
+            // Validate input
+            $request->validate([
+                'latitude' => 'required|numeric|between:-90,90',
+                'longitude' => 'required|numeric|between:-180,180'
+            ]);
+
+            // Find user's karenderia
+            $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
+            
+            if (!$karenderia) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No karenderia application found',
+                    'data' => null
+                ], 404);
+            }
+
+            // Update location coordinates
+            $karenderia->latitude = $request->latitude;
+            $karenderia->longitude = $request->longitude;
+            $karenderia->save();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $karenderia->id,
+                    'name' => $karenderia->name,
+                    'latitude' => $karenderia->latitude,
+                    'longitude' => $karenderia->longitude,
+                    'updated_at' => $karenderia->updated_at
+                ],
+                'message' => 'Location updated successfully'
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid location coordinates',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update location',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Get status message for karenderia owner
      */
     private function getStatusMessage($status): string
@@ -223,6 +298,7 @@ class KarenderiaController extends Controller
         try {
             $validatedData = $request->validate([
                 'name' => 'required|string|max:255',
+                'business_name' => 'required|string|max:255',
                 'description' => 'required|string',
                 'address' => 'required|string',
                 'phone' => 'nullable|string|max:20',
@@ -403,4 +479,8 @@ class KarenderiaController extends Controller
             ], 500);
         }
     }
+<<<<<<< Updated upstream
 }
+=======
+}
+>>>>>>> Stashed changes

@@ -77,15 +77,18 @@ Route::prefix('orders')->group(function () {
 Route::prefix('karenderias')->group(function () {
     Route::get('/', [KarenderiaController::class, 'index']);
     Route::get('/search', [KarenderiaController::class, 'search']);
-    Route::get('/{id}', [KarenderiaController::class, 'show']);
     
     // Protected routes for karenderia owners
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [KarenderiaController::class, 'store']);
         Route::get('/my-karenderia', [KarenderiaController::class, 'myKarenderia']);
+        Route::put('/my-karenderia/location', [KarenderiaController::class, 'updateMyKarenderiaLocation']);
         Route::put('/{id}', [KarenderiaController::class, 'update']);
         Route::delete('/{id}', [KarenderiaController::class, 'destroy']);
     });
+    
+    // IMPORTANT: Keep /{id} route LAST to avoid conflicts with specific routes
+    Route::get('/{id}', [KarenderiaController::class, 'show']);
 });
 
 // Meal Plan routes
@@ -148,4 +151,34 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::put('/users/{userId}/role', [AdminController::class, 'updateUserRole']);
     Route::put('/users/{userId}/toggle-status', [AdminController::class, 'toggleUserStatus']);
     Route::delete('/users/{userId}', [AdminController::class, 'deleteUser']);
+});
+
+// Karenderia Owner Registration (Public)
+Route::prefix('karenderia-owner')->group(function () {
+    Route::post('/register', [App\Http\Controllers\Auth\KarenderiaOwnerController::class, 'register']);
+    Route::post('/login', [App\Http\Controllers\Auth\KarenderiaOwnerController::class, 'login']);
+});
+
+// Karenderia Owner Dashboard (Protected)
+Route::middleware('auth:sanctum')->prefix('karenderia-owner')->group(function () {
+    Route::get('/profile', [App\Http\Controllers\Auth\KarenderiaOwnerController::class, 'getProfile']);
+    Route::put('/profile', [App\Http\Controllers\Auth\KarenderiaOwnerController::class, 'updateProfile']);
+});
+
+// Admin Karenderia Management (Protected)
+Route::middleware('auth:sanctum')->prefix('admin/karenderias')->group(function () {
+    Route::get('/pending', [App\Http\Controllers\Admin\KarenderiaApprovalController::class, 'getPendingApplications']);
+    Route::get('/all', [App\Http\Controllers\Admin\KarenderiaApprovalController::class, 'getAllKarenderias']);
+    Route::post('/{karenderia}/approve', [App\Http\Controllers\Admin\KarenderiaApprovalController::class, 'approveApplication']);
+    Route::post('/{karenderia}/reject', [App\Http\Controllers\Admin\KarenderiaApprovalController::class, 'rejectApplication']);
+    Route::put('/{karenderia}/toggle-status', [App\Http\Controllers\Admin\KarenderiaApprovalController::class, 'toggleKarenderiaStatus']);
+});
+
+// Admin Karenderia Management (Public for Testing)
+Route::prefix('test-admin/karenderias')->group(function () {
+    Route::get('/pending', [App\Http\Controllers\Admin\KarenderiaApprovalController::class, 'getPendingApplications']);
+    Route::get('/all', [App\Http\Controllers\Admin\KarenderiaApprovalController::class, 'getAllKarenderias']);
+    Route::post('/{karenderia}/approve', [App\Http\Controllers\Admin\KarenderiaApprovalController::class, 'approveApplication']);
+    Route::post('/{karenderia}/reject', [App\Http\Controllers\Admin\KarenderiaApprovalController::class, 'rejectApplication']);
+    Route::put('/{karenderia}/toggle-status', [App\Http\Controllers\Admin\KarenderiaApprovalController::class, 'toggleKarenderiaStatus']);
 });
