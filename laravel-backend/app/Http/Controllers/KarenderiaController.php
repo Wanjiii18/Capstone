@@ -479,8 +479,4 @@ class KarenderiaController extends Controller
             ], 500);
         }
     }
-<<<<<<< Updated upstream
 }
-=======
-}
->>>>>>> Stashed changes
