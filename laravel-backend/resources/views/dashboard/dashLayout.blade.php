@@ -34,7 +34,7 @@
                 <li>
                     <a href="{{ route('dashboard.karenderia') }}" 
                     class="{{ Route::is('dashboard.karenderia') ? 'text-blue-600 underline' : 'text-gray-600 hover:text-blue-600' }}">
-                    Carinderias
+                    Karenderia
                     </a>
                 </li>
                 <li>
@@ -53,6 +53,12 @@
                     <a href="{{ route('dashboard.reports') }}" 
                     class="{{ Route::is('dashboard.reports') ? 'text-blue-600 underline' : 'text-gray-600 hover:text-blue-600' }}">
                     Reports
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('dashboard.pending') }}" 
+                    class="{{ Route::is('dashboard.pending') ? 'text-blue-600 underline' : 'text-gray-600 hover:text-blue-600' }}">
+                    Pending
                     </a>
                 </li>
             </ul>

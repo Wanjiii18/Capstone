@@ -49,23 +49,6 @@
         </div>
         <!-- Right: Details -->
         <div class="md:w-2/3">
-            <!-- Permits/Docs -->
-            <div class="mb-6">
-                <h3 class="text-lg font-semibold mb-2">Permits & Documents</h3>
-                <ul class="list-disc pl-6 text-gray-700">
-                    @forelse($karenderia['permits'] ?? [] as $permit)
-                        <li>
-                            <span class="font-semibold">{{ $permit['type'] ?? 'Permit' }}:</span>
-                            {{ $permit['number'] ?? 'N/A' }}
-                            @if(!empty($permit['file_url']))
-                                <a href="{{ $permit['file_url'] }}" class="text-blue-600 underline ml-2" target="_blank">View</a>
-                            @endif
-                        </li>
-                    @empty
-                        <li>No permits uploaded yet.</li>
-                    @endforelse
-                </ul>
-            </div>
             <!-- Menu -->
             <div class="mb-6">
                 <h3 class="text-lg font-semibold mb-2">Menu</h3>
@@ -81,26 +64,6 @@
                         </div>
                     @empty
                         <div class="text-gray-400">No menu items available.</div>
-                    @endforelse
-                </div>
-            </div>
-            <!-- Reviews -->
-            <div class="mb-6">
-                <h3 class="text-lg font-semibold mb-2">Reviews</h3>
-                <div>
-                    @forelse($karenderia['reviews'] ?? [] as $review)
-                        <div class="border-b py-2">
-                            <div class="flex items-center mb-1">
-                                <span class="font-semibold">{{ $review['user'] ?? 'Anonymous' }}</span>
-                                <span class="ml-2 text-yellow-500">
-                                    ★ {{ $review['rating'] ?? '-' }}
-                                </span>
-                                <span class="ml-2 text-xs text-gray-400">{{ $review['date'] ?? '' }}</span>
-                            </div>
-                            <div class="text-gray-700">{{ $review['comment'] ?? '' }}</div>
-                        </div>
-                    @empty
-                        <div class="text-gray-400">No reviews yet.</div>
                     @endforelse
                 </div>
             </div>
