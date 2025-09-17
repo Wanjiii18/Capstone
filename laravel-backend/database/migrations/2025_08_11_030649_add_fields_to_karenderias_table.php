@@ -17,6 +17,9 @@ return new class extends Migration
             $table->string('city')->nullable()->after('address');
             $table->string('province')->nullable()->after('city');
             $table->string('business_email')->nullable()->after('email');
+            if (!Schema::hasColumn('karenderias', 'logo_url')) {
+                $table->string('logo_url')->nullable()->after('business_email'); // Add logo_url column
+            }
             
             // Add approval tracking fields
             $table->timestamp('approved_at')->nullable()->after('status');
@@ -45,6 +48,7 @@ return new class extends Migration
                 'city', 
                 'province',
                 'business_email',
+                'logo_url', // Drop logo_url column
                 'approved_at',
                 'approved_by'
             ]);

@@ -21,6 +21,7 @@ class CreateMenuItemsTable extends Migration
                 $table->string('name');
                 $table->text('description')->nullable();
                 $table->decimal('price', 10, 2);
+                $table->string('image_url')->nullable()->after('description'); // Add image_url column
                 $table->timestamps();
 
                 $table->foreign('karenderia_id')->references('id')->on('karenderias')->onDelete('cascade');
