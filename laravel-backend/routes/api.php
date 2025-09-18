@@ -77,15 +77,17 @@ Route::prefix('orders')->group(function () {
 Route::prefix('karenderias')->group(function () {
     Route::get('/', [KarenderiaController::class, 'index']);
     Route::get('/search', [KarenderiaController::class, 'search']);
-    Route::get('/{id}', [KarenderiaController::class, 'show']);
     
-    // Protected routes for karenderia owners
+    // Protected routes for karenderia owners (must come before {id} route)
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [KarenderiaController::class, 'store']);
         Route::get('/my-karenderia', [KarenderiaController::class, 'myKarenderia']);
         Route::put('/{id}', [KarenderiaController::class, 'update']);
         Route::delete('/{id}', [KarenderiaController::class, 'destroy']);
     });
+    
+    // Dynamic ID route must come AFTER specific routes to avoid conflicts
+    Route::get('/{id}', [KarenderiaController::class, 'show']);
 });
 
 // Meal Plan routes
@@ -101,8 +103,12 @@ Route::prefix('meal-plans')->group(function () {
 Route::middleware('auth:sanctum')->prefix('menu-items')->group(function () {
     Route::post('/', [MenuItemController::class, 'store']);
     Route::get('/', [MenuItemController::class, 'index']);
+    Route::get('/search', [MenuItemController::class, 'search']);
+    Route::get('/my-menu', [MenuItemController::class, 'myMenuItems']);
+    Route::get('/allergen-summary', [MenuItemController::class, 'getAllergenSummary']);
     Route::get('/{id}', [MenuItemController::class, 'show']);
     Route::put('/{id}', [MenuItemController::class, 'update']);
+    Route::put('/{id}/nutrition', [MenuItemController::class, 'updateNutrition']);
     Route::delete('/{id}', [MenuItemController::class, 'destroy']);
 });
 
