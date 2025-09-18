@@ -10,7 +10,7 @@ class MenuItemController extends Controller
 {
     public function index()
     {
-        // For now, return all menu items to debug the issue
+        // Return all menu items (for public browsing/admin)
         $menuItems = MenuItem::with('karenderia')->get();
         return response()->json(['data' => $menuItems]);
     }
@@ -400,9 +400,12 @@ class MenuItemController extends Controller
     {
         try {
             $user = $request->user();
+            \Log::info('MyMenuItems called for user:', ['user_id' => $user->id, 'email' => $user->email]);
+            
             $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
             
             if (!$karenderia) {
+                \Log::warning('No karenderia found for user:', ['user_id' => $user->id]);
                 return response()->json([
                     'success' => true,
                     'data' => [],
@@ -410,9 +413,27 @@ class MenuItemController extends Controller
                 ]);
             }
 
+            \Log::info('Found karenderia for user:', [
+                'karenderia_id' => $karenderia->id, 
+                'karenderia_name' => $karenderia->name,
+                'owner_id' => $karenderia->owner_id
+            ]);
+
             $menuItems = MenuItem::where('karenderia_id', $karenderia->id)
                                 ->with('karenderia')
                                 ->get();
+
+            \Log::info('Found menu items:', [
+                'count' => $menuItems->count(),
+                'karenderia_id' => $karenderia->id,
+                'items' => $menuItems->map(function($item) {
+                    return [
+                        'id' => $item->id,
+                        'name' => $item->name,
+                        'karenderia_id' => $item->karenderia_id
+                    ];
+                })
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -420,10 +441,16 @@ class MenuItemController extends Controller
                 'karenderia' => [
                     'id' => $karenderia->id,
                     'name' => $karenderia->name
+                ],
+                'debug' => [
+                    'user_id' => $user->id,
+                    'karenderia_id' => $karenderia->id,
+                    'menu_count' => $menuItems->count()
                 ]
             ]);
             
         } catch (\Exception $e) {
+            \Log::error('Error in myMenuItems:', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'error' => 'Failed to fetch menu items',
