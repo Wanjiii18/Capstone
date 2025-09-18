@@ -203,6 +203,59 @@ class MenuItemController extends Controller
         }
     }
 
+    /**
+     * Update only the availability status of a menu item
+     */
+    public function updateAvailability(Request $request, $id)
+    {
+        try {
+            $menuItem = MenuItem::findOrFail($id);
+            
+            // Verify that this menu item belongs to the current user's karenderia
+            $user = $request->user();
+            $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
+            
+            if (!$karenderia || $menuItem->karenderia_id !== $karenderia->id) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Unauthorized',
+                    'message' => 'You can only update your own menu items'
+                ], 403);
+            }
+            
+            $validatedData = $request->validate([
+                'is_available' => 'required|boolean'
+            ]);
+
+            $menuItem->update(['is_available' => $validatedData['is_available']]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Menu item availability updated successfully',
+                'data' => [
+                    'id' => $menuItem->id,
+                    'name' => $menuItem->name,
+                    'is_available' => $menuItem->is_available,
+                    'updated_at' => $menuItem->updated_at
+                ]
+            ]);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Validation failed',
+                'message' => 'Invalid input data',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to update menu item availability',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function destroy($id)
     {
         $menuItem = MenuItem::findOrFail($id);

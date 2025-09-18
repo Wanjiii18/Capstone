@@ -109,6 +109,7 @@ Route::middleware('auth:sanctum')->prefix('menu-items')->group(function () {
     Route::get('/{id}', [MenuItemController::class, 'show']);
     Route::put('/{id}', [MenuItemController::class, 'update']);
     Route::put('/{id}/nutrition', [MenuItemController::class, 'updateNutrition']);
+    Route::put('/{id}/availability', [MenuItemController::class, 'updateAvailability']);
     Route::delete('/{id}', [MenuItemController::class, 'destroy']);
 });
 
