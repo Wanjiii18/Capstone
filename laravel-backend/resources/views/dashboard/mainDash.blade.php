@@ -2,77 +2,107 @@
 
 
 @section('content')
-<div class="container-fluid">
-    <!-- KPIs Section -->
-    <div class="row">
-        <div class="col-md-3">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Total Users</h5>
-                    <p class="card-text">{{ $totalUsers ?? 'N/A' }}</p>
-                </div>
-            </div>
+<div class="modern-admin-dashboard p-6 space-y-6 bg-gray-100 min-h-screen animate-fade-in">
+    <!-- Modern Welcome Header -->
+    <!-- <div class="modern-welcome-section bg-gradient-to-r from-indigo-500 to-blue-500 rounded-2xl p-6 text-white shadow-lg flex items-center gap-4">
+        <div class="admin-avatar bg-white bg-opacity-20 p-4 rounded-full">
+            <ion-icon name="person" class="text-4xl"></ion-icon>
         </div>
-        <div class="col-md-3">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Active Users</h5>
-                    <p class="card-text">{{ $activeUsers ?? 'N/A' }}</p>
-                </div>
-            </div>
+        <div>
+            <h1 class="text-2xl font-bold">Welcome, Admin</h1>
+            <p class="text-sm opacity-80">KaPlato Administrative Dashboard</p>
         </div>
-        <div class="col-md-3">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Total Orders</h5>
-                    <p class="card-text">{{ $totalOrders ?? 'N/A' }}</p>
+    </div> -->
+
+
+    <!-- Modern Stats Grid -->
+    <div class="modern-stats-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="stat-card bg-white rounded-xl shadow hover:shadow-md transition-shadow p-5">
+            <div class="flex items-center gap-3 mb-2">
+                <div class="stat-icon text-blue-500 text-3xl">
+                    <ion-icon name="people"></ion-icon>
                 </div>
-            </div>
+                    <div class="text-sm font-medium text-gray-500">Total Users</div>
+                </div>
+            <div class="stat-value text-3xl font-bold text-gray-800">{{ $totalUsers ?? 'N/A' }}</div>
         </div>
-        <div class="col-md-3">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Total Reports</h5>
-                    <p class="card-text">{{ $totalReports ?? 'N/A' }}</p>
+
+        <div class="stat-card bg-white rounded-xl shadow hover:shadow-md transition-shadow p-5">
+            <div class="flex items-center gap-3 mb-2">
+                <div class="stat-icon text-blue-500 text-3xl">
+                    <ion-icon name="people"></ion-icon>
                 </div>
-            </div>
+                    <div class="text-sm font-medium text-gray-500">Active Users</div>
+                </div>
+            <div class="stat-value text-3xl font-bold text-gray-800">{{ $activeUsers ?? 'N/A' }}</div>
+        </div>
+
+        <div class="stat-card bg-white rounded-xl shadow hover:shadow-md transition-shadow p-5">
+            <div class="flex items-center gap-3 mb-2">
+                <div class="stat-icon text-blue-500 text-3xl">
+                    <ion-icon name="people"></ion-icon>
+                </div>
+                    <div class="text-sm font-medium text-gray-500">Total Orders</div>
+                </div>
+            <div class="stat-value text-3xl font-bold text-gray-800">{{ $totalOrders ?? 'N/A' }}</div>
+        </div>
+
+        <div class="stat-card bg-white rounded-xl shadow hover:shadow-md transition-shadow p-5">
+            <div class="flex items-center gap-3 mb-2">
+                <div class="stat-icon text-blue-500 text-3xl">
+                    <ion-icon name="people"></ion-icon>
+                </div>
+                    <div class="text-sm font-medium text-gray-500">Total Reports</div>
+                </div>
+            <div class="stat-value text-3xl font-bold text-gray-800">{{ $totalReports ?? 'N/A' }}</div>
         </div>
     </div>
 
-    <!-- Graphs Section -->
-    <div class="row mt-4">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">User Growth</h5>
-                    <canvas id="userGrowthChart"></canvas>
-                </div>
+    <!-- Modern Graphs Section -->
+    <div class="modern-section-card bg-white rounded-xl shadow p-6">
+        <div class="section-header flex items-center gap-3 mb-4">
+            <ion-icon name="analytics" class="text-blue-500 text-2xl"></ion-icon>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">User Growth</h2>
+                <p class="text-sm text-gray-500">Track user growth over time</p>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Karenderia Stats</h5>
-                    <canvas id="karenderiaStatsChart"></canvas>
-                </div>
-            </div>
+        <div class="section-content">
+            <canvas id="userGrowthChart" class="w-full"></canvas>
         </div>
     </div>
 
-    <!-- Recent Activities Section -->
-    <div class="row mt-4">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Recent Activities</h5>
-                    <ul class="list-group">
-                        <li class="list-group-item">Activity 1</li>
-                        <li class="list-group-item">Activity 2</li>
-                        <li class="list-group-item">Activity 3</li>
-                    </ul>
+    <div class="modern-section-card">
+        <div class="section-header">
+            <div class="header-info">
+                <div class="header-icon">
+                    <ion-icon name="stats-chart" color="secondary"></ion-icon>
+                </div>
+                <div class="header-text">
+                    <h2>Karenderia Stats</h2>
+                    <p>Overview of karenderia statuses</p>
                 </div>
             </div>
         </div>
+        <div class="section-content">
+            <canvas id="karenderiaStatsChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Modern Recent Activities -->
+    <div class="modern-section-card bg-white rounded-xl shadow p-6">
+        <div class="section-header flex items-center gap-3 mb-4">
+            <ion-icon name="list" class="text-green-500 text-2xl"></ion-icon>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">Recent Activities</h2>
+                <p class="text-sm text-gray-500">Latest actions in the system</p>
+            </div>
+        </div>
+        <ul class="space-y-2 text-gray-700">
+            <li class="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">Activity 1</li>
+            <li class="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">Activity 2</li>
+            <li class="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">Activity 3</li>
+        </ul>
     </div>
 </div>
 

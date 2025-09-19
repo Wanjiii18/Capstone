@@ -4,14 +4,16 @@ namespace App\Http\Controllers\web;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\User;
 
 class UserController extends Controller
 {
-    public function showUserDashboard()
+    public function showUserDashboard(Request $request)
     {
-        $users = \App\Models\User::select('id', 'name', 'email')
-            ->get()
-            ->toArray();
+        $sort = $request->query('sort', 'name'); // Default sort by name
+        $users = User::select('id', 'name', 'email')
+            ->orderBy($sort)
+            ->paginate(10); // Paginate with 10 users per page
 
         return view('dashboard.userDash', ['users' => $users]);
     }
