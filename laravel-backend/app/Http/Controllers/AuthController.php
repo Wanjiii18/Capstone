@@ -111,14 +111,16 @@ class AuthController extends Controller
 
             // Create karenderia business record
             $karenderia = $user->karenderia()->create([
+                'name' => $request->business_name, // Use business_name as the display name
                 'business_name' => $request->business_name,
                 'description' => $request->description,
                 'address' => $request->address,
                 'city' => $request->city,
                 'province' => $request->province,
-                'latitude' => $request->latitude, // Will be null initially
-                'longitude' => $request->longitude, // Will be null initially
+                'latitude' => $request->latitude ?? null, // Will be null initially - admin will set coordinates
+                'longitude' => $request->longitude ?? null, // Will be null initially - admin will set coordinates
                 'phone' => $request->phone,
+                'email' => $request->business_email ?: $request->email, // Use business email if provided, otherwise user email
                 'business_email' => $request->business_email,
                 'opening_time' => $request->opening_time ?? '09:00',
                 'closing_time' => $request->closing_time ?? '21:00',
