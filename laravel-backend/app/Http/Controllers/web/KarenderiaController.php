@@ -13,7 +13,7 @@ class KarenderiaController extends Controller
     {
         $karenderia = Karenderia::findOrFail($id)->toArray();
 
-        return view('dashboardProfile.karenderiaProfile', ['karenderia' => $karenderia]);
+        return view('karenderia.karenderiaProfile', ['karenderia' => $karenderia]);
     }
 
     public function showKarenderiaDashboard()
@@ -23,13 +23,13 @@ class KarenderiaController extends Controller
             ->get()
             ->toArray();
 
-        return view('dashboard.karenderiaDash', ['karenderias' => $karenderias]);
+        return view('karenderia.karenderiaDash', ['karenderias' => $karenderias]);
     }
 
     public function edit($id)
     {
         $karenderia = Karenderia::findOrFail($id);
-        return view('dashboardProfile.profileCRUD.karenderiaCRUD', ['karenderia' => $karenderia]);
+        return view('karenderia.karenderiaCRUD', ['karenderia' => $karenderia]);
     }
 
     public function update(Request $request, $id)
@@ -47,7 +47,7 @@ class KarenderiaController extends Controller
 
         $karenderia->update($validatedData);
 
-        return redirect()->route('dashboard.karenderia')
+        return redirect()->route('karenderia.karenderiaDash')
             ->with('success', 'Karenderia updated successfully.');
     }
 
@@ -60,7 +60,7 @@ class KarenderiaController extends Controller
             'approved_by' => auth()->id(),
         ]);
 
-        return redirect()->route('dashboardProfile.karenderiaProfile', ['id' => $karenderia->id])
+        return redirect()->route('karenderia.karenderiaProfile', ['id' => $karenderia->id])
             ->with('success', 'Karenderia approved successfully.');
     }
 
@@ -69,7 +69,7 @@ class KarenderiaController extends Controller
         $karenderia = Karenderia::findOrFail($id);
         $karenderia->delete();
 
-        return redirect()->route('dashboard.karenderia')
+        return redirect()->route('karenderia.karenderia')
             ->with('success', 'Karenderia removed successfully.');
     }
 }

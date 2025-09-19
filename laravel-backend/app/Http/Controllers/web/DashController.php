@@ -26,6 +26,6 @@ class DashController extends Controller
     }
 
     public function showReportDashboard(){
-        return view('dashboard.reportDash');
+        return view('reports.reportDash');
     }
 }

@@ -15,7 +15,7 @@ class UserController extends Controller
             ->orderBy($sort)
             ->paginate(10); // Paginate with 10 users per page
 
-        return view('dashboard.userDash', ['users' => $users]);
+        return view('user.userDash', ['users' => $users]);
     }
 
     public function show($id)
@@ -33,6 +33,6 @@ class UserController extends Controller
             'updated_at' => $user->updated_at
         ];
 
-        return view('dashboardProfile.userProfile', ['user' => $data]);
+        return view('user.userProfile', ['user' => $data]);
     }
 }

@@ -1,8 +1,7 @@
 <?php
 
-namespace App\Http\Controllers\web;
+namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Reports;
 
@@ -11,12 +10,7 @@ class ReportController extends Controller
     public function index()
     {
         $reports = Reports::all();
-        return view('reports.index', compact('reports'));
-    }
-
-    public function create()
-    {
-        return view('reports.create');
+        return response()->json($reports);
     }
 
     public function store(Request $request)
@@ -28,14 +22,14 @@ class ReportController extends Controller
             'status' => 'string|in:pending,approved,rejected',
         ]);
 
-        Reports::create($validated);
-        return redirect()->route('reports.index')->with('success', 'Report created successfully');
+        $report = Reports::create($validated);
+        return response()->json($report, 201);
     }
 
-    public function edit($id)
+    public function show($id)
     {
         $report = Reports::findOrFail($id);
-        return view('reports.edit', compact('report'));
+        return response()->json($report);
     }
 
     public function update(Request $request, $id)
@@ -49,7 +43,7 @@ class ReportController extends Controller
         ]);
 
         $report->update($validated);
-        return redirect()->route('reports.index')->with('success', 'Report updated successfully');
+        return response()->json($report);
     }
 
     public function destroy($id)
@@ -57,6 +51,6 @@ class ReportController extends Controller
         $report = Reports::findOrFail($id);
         $report->delete();
 
-        return redirect()->route('reports.index')->with('success', 'Report deleted successfully');
+        return response()->json(['message' => 'Report deleted successfully']);
     }
 }

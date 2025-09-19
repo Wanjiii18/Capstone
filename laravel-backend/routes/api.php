@@ -9,6 +9,7 @@ use App\Http\Controllers\KarenderiaController;
 use App\Http\Controllers\MealPlanController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\MenuItemController;
+use App\Http\Controllers\ReportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -156,6 +157,9 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::put('/users/{userId}/toggle-status', [AdminController::class, 'toggleUserStatus']);
     Route::delete('/users/{userId}', [AdminController::class, 'deleteUser']);
 });
+
+// Report routes
+Route::apiResource('reports', ReportController::class);
 
 // Fallback route for undefined API routes
 Route::fallback(function () {

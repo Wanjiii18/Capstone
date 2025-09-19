@@ -15,7 +15,7 @@ class MenuItemController extends Controller
             ->get()
             ->toArray();
 
-        return view('dashboard.menuDash', ['menuItems' => $menuItems]);
+        return view('menu.menuDash', ['menuItems' => $menuItems]);
     }
 
     public function show($id)

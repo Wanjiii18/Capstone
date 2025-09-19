@@ -8,6 +8,7 @@ use App\Http\Controllers\web\KarenderiaController;
 use App\Http\Controllers\web\MenuItemController;
 use App\Http\Controllers\web\UserController;
 use App\Http\Controllers\web\PendingController;
+use App\Http\Controllers\web\ReportController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -30,7 +31,7 @@ Route::get('dashboard/karenderia', [KarenderiaController::class, 'showKarenderia
 Route::get('dashboard/menu', [MenuItemController::class, 'showMenuDashboard'])->name('dashboard.menu');
 Route::get('dashboard/meals', [MenuItemController::class, 'showMenuDashboard'])->name('dashboard.meals');
 Route::get('dashboard/users', [UserController::class, 'showUserDashboard'])->name('dashboard.users');
-Route::get('dashboard/reports', [DashController::class, 'showReportDashboard'])->name('dashboard.reports');
+// Route::get('dashboard/reports', [DashController::class, 'showReportDashboard'])->name('dashboard.reports');
 Route::get('dashboard/pending', [PendingController::class, 'showPendingDashboard'])->name('dashboard.pending');
 
 // Details Route
@@ -46,6 +47,12 @@ Route::get('karenderias/{id}/edit', [KarenderiaController::class, 'edit'])->name
 Route::put('karenderias/{id}', [KarenderiaController::class, 'update'])->name('karenderia.update');
 Route::post('karenderias/{id}/approve', [KarenderiaController::class, 'approve'])->name('karenderia.approve');
 Route::delete('karenderias/{id}', [KarenderiaController::class, 'destroy'])->name('karenderia.destroy');
+
+// CRUD operations for Reports
+Route::resource('dashboard/reports', ReportController::class);
+
+// Karenderia Dashboard route
+Route::get('/karenderia/dashboard', [KarenderiaController::class, 'dashboard'])->name('karenderia.karenderiaDash');
 
 // Fallback route for undefined web routes
 Route::fallback(function () {

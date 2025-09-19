@@ -16,7 +16,7 @@ class PendingController extends Controller
             ->get()
             ->toArray();
 
-        return view('dashboard.pendingDashboard', ['pendingKarenderias' => $pendingKarenderias]);
+        return view('pending.pendingDashboard', ['pendingKarenderias' => $pendingKarenderias]);
     }
 
 }

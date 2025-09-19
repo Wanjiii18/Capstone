@@ -50,8 +50,8 @@
                     </a>
                 </li>
                 <li>
-                    <a href="{{ route('dashboard.reports') }}" 
-                    class="{{ Route::is('dashboard.reports') ? 'text-blue-600 underline' : 'text-gray-600 hover:text-blue-600' }}">
+                    <a href="{{ route('reports.index') }}" 
+                    class="{{ Route::is('reports.index') ? 'text-blue-600 underline' : 'text-gray-600 hover:text-blue-600' }}">
                     Reports
                     </a>
                 </li>
