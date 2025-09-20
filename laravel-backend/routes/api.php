@@ -4,7 +4,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\OrderController;
 use App\Http\Controllers\KarenderiaController;
 use App\Http\Controllers\MealPlanController;
 use App\Http\Controllers\AdminController;
@@ -59,33 +58,31 @@ Route::middleware('auth:sanctum')->prefix('users/{userId}')->group(function () {
     Route::put('/active-meal-plan', [UserController::class, 'setActiveMealPlan']);
 });
 
-// Order routes
-Route::prefix('orders')->group(function () {
-    // Guest order creation (no auth required)
-    Route::post('/', [OrderController::class, 'store']);
-    
-    // Authenticated order routes
-    Route::middleware('auth:sanctum')->group(function () {
-        Route::get('/', [OrderController::class, 'index']);
-        Route::get('/recent', [OrderController::class, 'getRecentOrders']);
-        Route::get('/{id}', [OrderController::class, 'show']);
-        Route::put('/{id}/status', [OrderController::class, 'updateStatus']);
-    });
-});
-
 // Karenderia routes
 Route::prefix('karenderias')->group(function () {
     Route::get('/', [KarenderiaController::class, 'index']);
+    Route::get('/nearby', [KarenderiaController::class, 'nearby']);
     Route::get('/search', [KarenderiaController::class, 'search']);
     Route::get('/{id}', [KarenderiaController::class, 'show']);
     
+<<<<<<< Updated upstream
     // Protected routes for karenderia owners
+=======
+    // Protected routes for karenderia owners (must come before /{id} route)
+>>>>>>> Stashed changes
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [KarenderiaController::class, 'store']);
         Route::get('/my-karenderia', [KarenderiaController::class, 'myKarenderia']);
         Route::put('/{id}', [KarenderiaController::class, 'update']);
+        Route::put('/{id}/location', [KarenderiaController::class, 'updateLocation']); // Added missing route
         Route::delete('/{id}', [KarenderiaController::class, 'destroy']);
     });
+<<<<<<< Updated upstream
+=======
+    
+    // This must come AFTER my-karenderia to avoid conflicts
+    Route::get('/{id}', [KarenderiaController::class, 'show']);
+>>>>>>> Stashed changes
 });
 
 // Meal Plan routes
@@ -101,9 +98,29 @@ Route::prefix('meal-plans')->group(function () {
 Route::middleware('auth:sanctum')->prefix('menu-items')->group(function () {
     Route::post('/', [MenuItemController::class, 'store']);
     Route::get('/', [MenuItemController::class, 'index']);
+<<<<<<< Updated upstream
+=======
+    Route::get('/my-menu', [MenuItemController::class, 'getMyMenuItems']); // Added missing route
+>>>>>>> Stashed changes
     Route::get('/{id}', [MenuItemController::class, 'show']);
     Route::put('/{id}', [MenuItemController::class, 'update']);
     Route::delete('/{id}', [MenuItemController::class, 'destroy']);
+});
+
+// Menu Categories routes
+Route::middleware('auth:sanctum')->prefix('menu-categories')->group(function () {
+    Route::get('/', [MenuItemController::class, 'getCategories']);
+    Route::post('/', [MenuItemController::class, 'createCategory']);
+    Route::put('/{id}', [MenuItemController::class, 'updateCategory']);
+    Route::delete('/{id}', [MenuItemController::class, 'deleteCategory']);
+});
+
+// Ingredients routes
+Route::middleware('auth:sanctum')->prefix('ingredients')->group(function () {
+    Route::get('/', [MenuItemController::class, 'getIngredients']);
+    Route::post('/', [MenuItemController::class, 'createIngredient']);
+    Route::put('/{id}', [MenuItemController::class, 'updateIngredient']);
+    Route::delete('/{id}', [MenuItemController::class, 'deleteIngredient']);
 });
 
 // Analytics routes for karenderia owners

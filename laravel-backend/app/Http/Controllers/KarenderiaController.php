@@ -22,6 +22,7 @@ class KarenderiaController extends Controller
                     return [
                         'id' => $karenderia->id,
                         'name' => $karenderia->name,
+                        'business_name' => $karenderia->business_name,
                         'description' => $karenderia->description,
                         'address' => $karenderia->address,
                         'latitude' => $karenderia->latitude,
@@ -168,6 +169,7 @@ class KarenderiaController extends Controller
                 'data' => [
                     'id' => $karenderia->id,
                     'name' => $karenderia->name,
+                    'business_name' => $karenderia->business_name,
                     'description' => $karenderia->description,
                     'address' => $karenderia->address,
                     'phone' => $karenderia->phone,
@@ -400,6 +402,149 @@ class KarenderiaController extends Controller
                 'success' => false,
                 'message' => 'Failed to delete karenderia',
                 'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get nearby karenderias based on location
+     */
+    public function nearby(Request $request): JsonResponse
+    {
+        try {
+            $latitude = $request->get('latitude');
+            $longitude = $request->get('longitude');
+            $radius = $request->get('radius', 5000); // Default 5km radius
+            
+            if (!$latitude || !$longitude) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Latitude and longitude are required'
+                ], 400);
+            }
+
+            // Get all active karenderias
+            $karenderias = \App\Models\Karenderia::where('status', 'active')
+                ->with(['owner:id,name,email', 'menuItems'])
+                ->get()
+                ->map(function ($karenderia) use ($latitude, $longitude) {
+                    // Calculate distance
+                    $distance = $this->calculateDistance(
+                        $latitude, 
+                        $longitude, 
+                        $karenderia->latitude, 
+                        $karenderia->longitude
+                    );
+                    
+                    return [
+                        'id' => $karenderia->id,
+                        'name' => $karenderia->name,
+                        'description' => $karenderia->description,
+                        'address' => $karenderia->address,
+                        'latitude' => $karenderia->latitude,
+                        'longitude' => $karenderia->longitude,
+                        'distance' => round($distance * 1000), // Convert to meters
+                        'rating' => $karenderia->rating ?: 4.0,
+                        'average_rating' => $karenderia->rating ?: 4.0,
+                        'isOpen' => $this->isKarenderiaOpen($karenderia),
+                        'cuisine' => 'Filipino',
+                        'priceRange' => '₱₱',
+                        'imageUrl' => $karenderia->logo_url ?: '/assets/images/restaurant-placeholder.jpg',
+                        'deliveryTime' => ($karenderia->delivery_time_minutes ?: 30) . ' min',
+                        'delivery_time_minutes' => $karenderia->delivery_time_minutes ?: 30,
+                        'deliveryFee' => $karenderia->delivery_fee ?: 50,
+                        'phone' => $karenderia->phone,
+                        'email' => $karenderia->email,
+                        'status' => $karenderia->status,
+                        'menu_items_count' => $karenderia->menuItems->count(),
+                        'owner' => $karenderia->owner ? $karenderia->owner->name : 'Unknown'
+                    ];
+                })
+                ->filter(function ($karenderia) use ($radius) {
+                    // Filter by radius (in meters)
+                    return $karenderia['distance'] <= $radius;
+                })
+                ->sortBy('distance')
+                ->values();
+
+            return response()->json([
+                'success' => true,
+                'data' => $karenderias,
+                'message' => 'Found ' . $karenderias->count() . ' karenderias within ' . round($radius/1000, 1) . 'km'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error finding nearby karenderias: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Calculate distance between two coordinates using Haversine formula
+     */
+    private function calculateDistance($lat1, $lng1, $lat2, $lng2)
+    {
+        $earthRadius = 6371; // Earth's radius in kilometers
+
+        $lat1Rad = deg2rad($lat1);
+        $lng1Rad = deg2rad($lng1);
+        $lat2Rad = deg2rad($lat2);
+        $lng2Rad = deg2rad($lng2);
+
+        $deltaLat = $lat2Rad - $lat1Rad;
+        $deltaLng = $lng2Rad - $lng1Rad;
+
+        $a = sin($deltaLat / 2) * sin($deltaLat / 2) +
+             cos($lat1Rad) * cos($lat2Rad) *
+             sin($deltaLng / 2) * sin($deltaLng / 2);
+
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        return $earthRadius * $c;
+    }
+
+    /**
+     * Get the current authenticated user's karenderia
+     */
+    public function getMyKarenderia(): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
+
+            if ($user->role !== 'karenderia_owner') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User is not a karenderia owner'
+                ], 403);
+            }
+
+            $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
+            
+            if (!$karenderia) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No karenderia found for this owner'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $karenderia
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving karenderia: ' . $e->getMessage()
             ], 500);
         }
     }
