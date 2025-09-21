@@ -200,6 +200,80 @@ class KarenderiaController extends Controller
     }
 
     /**
+     * Get nearby karenderias based on location
+     */
+    public function nearby(Request $request): JsonResponse
+    {
+        try {
+            $lat = $request->query('lat');
+            $lng = $request->query('lng');
+            $radius = $request->query('radius', 5000); // Default 5km radius
+
+            if (!$lat || !$lng) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Latitude and longitude are required',
+                    'data' => []
+                ], 400);
+            }
+
+            // Use Haversine formula to find nearby karenderias
+            $karenderias = \App\Models\Karenderia::select('*')
+                ->selectRaw('
+                    (6371 * acos(
+                        cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + 
+                        sin(radians(?)) * sin(radians(latitude))
+                    )) AS distance
+                ', [$lat, $lng, $lat])
+                ->where('status', 'active')
+                ->having('distance', '<=', $radius / 1000) // Convert meters to kilometers
+                ->orderBy('distance')
+                ->get()
+                ->map(function ($karenderia) {
+                    return [
+                        'id' => $karenderia->id,
+                        'name' => $karenderia->name,
+                        'description' => $karenderia->description,
+                        'address' => $karenderia->address,
+                        'latitude' => $karenderia->latitude,
+                        'longitude' => $karenderia->longitude,
+                        'rating' => $karenderia->average_rating ?? 4.0,
+                        'distance' => round($karenderia->distance, 2),
+                        'isOpen' => $this->isKarenderiaOpen($karenderia),
+                        'cuisine' => 'Filipino',
+                        'priceRange' => '₱₱',
+                        'imageUrl' => $karenderia->logo_url ?: '/assets/images/restaurant-placeholder.jpg',
+                        'deliveryTime' => $karenderia->delivery_time_minutes . ' min',
+                        'deliveryFee' => $karenderia->delivery_fee,
+                        'phone' => $karenderia->phone,
+                        'email' => $karenderia->email,
+                        'accepts_cash' => $karenderia->accepts_cash,
+                        'accepts_online_payment' => $karenderia->accepts_online_payment,
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'data' => $karenderias,
+                'message' => 'Nearby karenderias retrieved successfully',
+                'search_params' => [
+                    'lat' => $lat,
+                    'lng' => $lng,
+                    'radius' => $radius . 'm',
+                    'count' => $karenderias->count()
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve nearby karenderias',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Get status message for karenderia owner
      */
     private function getStatusMessage($status): string

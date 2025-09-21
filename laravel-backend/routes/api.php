@@ -80,6 +80,9 @@ Route::prefix('karenderias')->group(function () {
     Route::get('/search', [KarenderiaController::class, 'search']);
     
     // Protected routes for karenderia owners (must come before {id} route)
+    Route::get('/nearby', [KarenderiaController::class, 'nearby']);
+    
+    // Protected routes for karenderia owners (must come before {id} route)
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [KarenderiaController::class, 'store']);
         Route::get('/my-karenderia', [KarenderiaController::class, 'myKarenderia']);
@@ -87,6 +90,7 @@ Route::prefix('karenderias')->group(function () {
         Route::delete('/{id}', [KarenderiaController::class, 'destroy']);
     });
     
+    // Dynamic ID route must come AFTER specific routes to avoid conflicts
     // Dynamic ID route must come AFTER specific routes to avoid conflicts
     Route::get('/{id}', [KarenderiaController::class, 'show']);
 });
