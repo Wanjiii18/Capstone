@@ -61,32 +61,20 @@ Route::middleware('auth:sanctum')->prefix('users/{userId}')->group(function () {
 // Karenderia routes
 Route::prefix('karenderias')->group(function () {
     Route::get('/', [KarenderiaController::class, 'index']);
-    Route::get('/nearby', [KarenderiaController::class, 'nearby']);
     Route::get('/search', [KarenderiaController::class, 'search']);
-<<<<<<< Updated upstream
-    Route::get('/{id}', [KarenderiaController::class, 'show']);
-=======
     Route::get('/nearby', [KarenderiaController::class, 'nearby']);
->>>>>>> Stashed changes
     
-<<<<<<< Updated upstream
-    // Protected routes for karenderia owners
-=======
-    // Protected routes for karenderia owners (must come before /{id} route)
->>>>>>> Stashed changes
+    // Protected routes for karenderia owners (must come before {id} route)
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [KarenderiaController::class, 'store']);
         Route::get('/my-karenderia', [KarenderiaController::class, 'myKarenderia']);
         Route::put('/{id}', [KarenderiaController::class, 'update']);
-        Route::put('/{id}/location', [KarenderiaController::class, 'updateLocation']); // Added missing route
+        Route::put('/{id}/data', [KarenderiaController::class, 'updateKarenderiaData']);
         Route::delete('/{id}', [KarenderiaController::class, 'destroy']);
     });
-<<<<<<< Updated upstream
-=======
     
-    // This must come AFTER my-karenderia to avoid conflicts
+    // Dynamic ID route must come AFTER specific routes to avoid conflicts
     Route::get('/{id}', [KarenderiaController::class, 'show']);
->>>>>>> Stashed changes
 });
 
 // Meal Plan routes
@@ -102,10 +90,7 @@ Route::prefix('meal-plans')->group(function () {
 Route::middleware('auth:sanctum')->prefix('menu-items')->group(function () {
     Route::post('/', [MenuItemController::class, 'store']);
     Route::get('/', [MenuItemController::class, 'index']);
-<<<<<<< Updated upstream
-=======
     Route::get('/my-menu', [MenuItemController::class, 'getMyMenuItems']); // Added missing route
->>>>>>> Stashed changes
     Route::get('/{id}', [MenuItemController::class, 'show']);
     Route::put('/{id}', [MenuItemController::class, 'update']);
     Route::delete('/{id}', [MenuItemController::class, 'destroy']);

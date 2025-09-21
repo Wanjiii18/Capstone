@@ -12,6 +12,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Add CORS middleware globally for API routes
+        $middleware->api(prepend: [
+            \App\Http\Middleware\CorsMiddleware::class,
+        ]);
+        
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
         ]);

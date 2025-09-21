@@ -188,8 +188,6 @@ class MenuItemController extends Controller
             'karenderia_id' => $karenderia->id
         ]);
     }
-<<<<<<< Updated upstream
-=======
 
     /**
      * Search menu items with filters including nutrition and allergen criteria
@@ -640,5 +638,4 @@ class MenuItemController extends Controller
             'message' => 'Ingredient deleted successfully'
         ]);
     }
->>>>>>> Stashed changes
 }
