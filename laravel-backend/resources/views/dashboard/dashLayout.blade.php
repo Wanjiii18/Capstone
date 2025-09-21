@@ -6,73 +6,92 @@
     <title>@yield('title', 'Dashboard')</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-gray-50 min-h-screen flex flex-col">
+
     <!-- Header -->
-    <div class="bg-white border-b">
-        <div class="px-6 py-4">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-900">KaPlato</h1>
-                    <p class="text-gray-600">Admin Dashboard</p>
+    <header class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <!-- Brand -->
+            <div>
+                <h1 class="text-2xl font-bold text-blue-700 tracking-tight">KaPlato</h1>
+                <p class="text-gray-500 text-sm">Admin Dashboard</p>
+            </div>
+            <!-- Actions -->
+            <div class="flex items-center gap-3">
+                <button class="hidden sm:block bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition">
+                    Generate Report
+                </button>
+                <!-- User Avatar Placeholder -->
+                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-700">
+                    JD
                 </div>
-                <button class="bg-blue-600 text-white px-4 py-2 rounded-md">Generate Report</button>
             </div>
         </div>
-    </div>
+    </header>
 
-    <!-- Sidebar and Main Content -->
-    <div class="flex">
+    <!-- Sidebar + Main -->
+    <div class="flex flex-1 overflow-hidden">
         <!-- Sidebar -->
-        <div class="w-1/12 bg-gray-100 p-4 min-h-screen">
-            <ul class="space-y-4">
-                <li>
-                    <a href="{{ route('dashboard') }}" 
-                    class="{{ Route::is('dashboard') ? 'text-blue-600 underline' : 'text-gray-600 hover:text-blue-600' }}">
-                    Overview
-                    </a>
-                </li>
-                <li>
-                    <a href="{{ route('dashboard.karenderia') }}" 
-                    class="{{ Route::is('dashboard.karenderia') ? 'text-blue-600 underline' : 'text-gray-600 hover:text-blue-600' }}">
-                    Karenderia
-                    </a>
-                </li>
-                <li>
-                    <a href="{{ route('dashboard.menu') }}" 
-                    class="{{ Route::is('dashboard.menu') ? 'text-blue-600 underline' : 'text-gray-600 hover:text-blue-600' }}">
-                    Meals
-                    </a>
-                </li>
-                <li>
-                    <a href="{{ route('dashboard.users') }}" 
-                    class="{{ Route::is('dashboard.users') ? 'text-blue-600 underline' : 'text-gray-600 hover:text-blue-600' }}">
-                    Users
-                    </a>
-                </li>
-                <li>
-                    <a href="{{ route('reports.index') }}" 
-                    class="{{ Route::is('reports.index') ? 'text-blue-600 underline' : 'text-gray-600 hover:text-blue-600' }}">
-                    Reports
-                    </a>
-                </li>
-                <li>
-                    <a href="{{ route('dashboard.pending') }}" 
-                    class="{{ Route::is('dashboard.pending') ? 'text-blue-600 underline' : 'text-gray-600 hover:text-blue-600' }}">
-                    Pending
-                    </a>
-                </li>
-            </ul>
-        </div>
+        <aside class="w-64 bg-white border-r hidden md:flex flex-col p-5 space-y-6">
+            <nav>
+                <ul class="space-y-3 text-gray-700 font-medium">
+                    <li>
+                        <a href="{{ route('dashboard') }}"
+                           class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 
+                           {{ Route::is('dashboard') ? 'bg-blue-100 text-blue-700 font-semibold' : '' }}">
+                           <span>📊</span> Overview
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('dashboard.karenderia') }}"
+                           class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 
+                           {{ Route::is('dashboard.karenderia') ? 'bg-blue-100 text-blue-700 font-semibold' : '' }}">
+                           <span>🏪</span> Karenderia
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('dashboard.menu') }}"
+                           class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 
+                           {{ Route::is('dashboard.menu') ? 'bg-blue-100 text-blue-700 font-semibold' : '' }}">
+                           <span>🍽</span> Meals
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('dashboard.users') }}"
+                           class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 
+                           {{ Route::is('dashboard.users') ? 'bg-blue-100 text-blue-700 font-semibold' : '' }}">
+                           <span>👤</span> Users
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('reports.index') }}"
+                           class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 
+                           {{ Route::is('reports.index') ? 'bg-blue-100 text-blue-700 font-semibold' : '' }}">
+                           <span>📝</span> Reports
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('dashboard.pending') }}"
+                           class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 
+                           {{ Route::is('dashboard.pending') ? 'bg-blue-100 text-blue-700 font-semibold' : '' }}">
+                           <span>⏳</span> Pending
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
 
         <!-- Main Content -->
-        <div class="flex-1 p-6">
-            <!-- Stats Cards -->
-            @yield('stats')
-            <!-- Tabs -->
-            @yield('tabs')
-            <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-6">
             @yield('content')
-        </div>
+        </main>
     </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t mt-auto">
+        <div class="max-w-7xl mx-auto px-6 py-4 text-center text-sm text-gray-500">
+            © {{ date('Y') }} KaPlato. All rights reserved.
+        </div>
+    </footer>
 </body>
 </html>
