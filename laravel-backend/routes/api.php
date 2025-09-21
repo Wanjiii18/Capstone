@@ -63,7 +63,11 @@ Route::prefix('karenderias')->group(function () {
     Route::get('/', [KarenderiaController::class, 'index']);
     Route::get('/nearby', [KarenderiaController::class, 'nearby']);
     Route::get('/search', [KarenderiaController::class, 'search']);
+<<<<<<< Updated upstream
     Route::get('/{id}', [KarenderiaController::class, 'show']);
+=======
+    Route::get('/nearby', [KarenderiaController::class, 'nearby']);
+>>>>>>> Stashed changes
     
 <<<<<<< Updated upstream
     // Protected routes for karenderia owners
