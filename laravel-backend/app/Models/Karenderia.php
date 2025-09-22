@@ -72,6 +72,11 @@ class Karenderia extends Model
         return $this->hasMany(Inventory::class);
     }
 
+    public function dailyMenus(): HasMany
+    {
+        return $this->hasMany(DailyMenu::class);
+    }
+
     // Scope for active karenderias
     public function scopeActive($query)
     {

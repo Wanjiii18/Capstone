@@ -7,11 +7,36 @@ use App\Models\MenuItem;
 
 class MenuItemController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // For now, return all menu items to debug the issue
-        $menuItems = MenuItem::with('karenderia')->get();
-        return response()->json(['data' => $menuItems]);
+        try {
+            $user = $request->user();
+            
+            if (!$user) {
+                return response()->json(['error' => 'User not authenticated'], 401);
+            }
+
+            // Get the user's karenderia
+            $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
+            
+            if (!$karenderia) {
+                // No karenderia exists for this user yet, return empty array
+                return response()->json(['data' => []]);
+            }
+
+            // Return only menu items that belong to this user's karenderia
+            $menuItems = MenuItem::with('karenderia')
+                ->where('karenderia_id', $karenderia->id)
+                ->get();
+                
+            return response()->json(['data' => $menuItems]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to fetch menu items',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function store(Request $request)
@@ -97,26 +122,107 @@ class MenuItemController extends Controller
         }
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
-        $menuItem = MenuItem::findOrFail($id);
-        return response()->json($menuItem);
+        try {
+            $user = $request->user();
+            
+            if (!$user) {
+                return response()->json(['error' => 'User not authenticated'], 401);
+            }
+
+            $menuItem = MenuItem::with('karenderia')->findOrFail($id);
+            
+            // Get the user's karenderia
+            $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
+            
+            if (!$karenderia) {
+                return response()->json(['error' => 'No karenderia found for this user'], 403);
+            }
+
+            // Check if the menu item belongs to the user's karenderia
+            if ($menuItem->karenderia_id !== $karenderia->id) {
+                return response()->json(['error' => 'Unauthorized: You can only view your own menu items'], 403);
+            }
+
+            return response()->json($menuItem);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to fetch menu item',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function update(Request $request, $id)
     {
-        $menuItem = MenuItem::findOrFail($id);
-        $menuItem->update($request->all());
+        try {
+            $user = $request->user();
+            
+            if (!$user) {
+                return response()->json(['error' => 'User not authenticated'], 401);
+            }
 
-        return response()->json(['message' => 'Menu item updated successfully', 'menuItem' => $menuItem]);
+            $menuItem = MenuItem::findOrFail($id);
+            
+            // Get the user's karenderia
+            $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
+            
+            if (!$karenderia) {
+                return response()->json(['error' => 'No karenderia found for this user'], 403);
+            }
+
+            // Check if the menu item belongs to the user's karenderia
+            if ($menuItem->karenderia_id !== $karenderia->id) {
+                return response()->json(['error' => 'Unauthorized: You can only update your own menu items'], 403);
+            }
+
+            $menuItem->update($request->all());
+
+            return response()->json(['message' => 'Menu item updated successfully', 'menuItem' => $menuItem]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to update menu item',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
-        $menuItem = MenuItem::findOrFail($id);
-        $menuItem->delete();
+        try {
+            $user = $request->user();
+            
+            if (!$user) {
+                return response()->json(['error' => 'User not authenticated'], 401);
+            }
 
-        return response()->json(['message' => 'Menu item deleted successfully']);
+            $menuItem = MenuItem::findOrFail($id);
+            
+            // Get the user's karenderia
+            $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
+            
+            if (!$karenderia) {
+                return response()->json(['error' => 'No karenderia found for this user'], 403);
+            }
+
+            // Check if the menu item belongs to the user's karenderia
+            if ($menuItem->karenderia_id !== $karenderia->id) {
+                return response()->json(['error' => 'Unauthorized: You can only delete your own menu items'], 403);
+            }
+
+            $menuItem->delete();
+
+            return response()->json(['message' => 'Menu item deleted successfully']);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to delete menu item',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function getDailySales(Request $request)

@@ -8,6 +8,8 @@ use App\Http\Controllers\KarenderiaController;
 use App\Http\Controllers\MealPlanController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\MenuItemController;
+use App\Http\Controllers\DailyMenuController;
+use App\Http\Controllers\InventoryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -94,6 +96,31 @@ Route::middleware('auth:sanctum')->prefix('menu-items')->group(function () {
     Route::get('/{id}', [MenuItemController::class, 'show']);
     Route::put('/{id}', [MenuItemController::class, 'update']);
     Route::delete('/{id}', [MenuItemController::class, 'destroy']);
+});
+
+// Daily Menu routes (Menu of the Day)
+Route::middleware('auth:sanctum')->prefix('daily-menu')->group(function () {
+    // For Karenderia Owners
+    Route::get('/', [DailyMenuController::class, 'index']); // Get owner's daily menu
+    Route::post('/', [DailyMenuController::class, 'store']); // Add menu item to daily menu
+    Route::put('/{id}', [DailyMenuController::class, 'update']); // Update daily menu entry
+    Route::delete('/{id}', [DailyMenuController::class, 'destroy']); // Remove from daily menu
+    Route::get('/available-items', [DailyMenuController::class, 'getAvailableMenuItems']); // Get menu items for selection
+});
+
+// Daily Menu public routes (for customers)
+Route::prefix('daily-menu')->group(function () {
+    Route::get('/available', [DailyMenuController::class, 'getAvailableForCustomers']); // Get available karenderias by meal type
+});
+
+// Inventory Management routes (for Karenderia Owners)
+Route::middleware('auth:sanctum')->prefix('inventory')->group(function () {
+    Route::get('/', [InventoryController::class, 'index']); // Get inventory list with stats
+    Route::post('/', [InventoryController::class, 'store']); // Create new inventory item
+    Route::put('/{id}', [InventoryController::class, 'update']); // Update inventory item
+    Route::delete('/{id}', [InventoryController::class, 'destroy']); // Delete inventory item
+    Route::post('/{id}/restock', [InventoryController::class, 'restock']); // Restock inventory item
+    Route::get('/alerts', [InventoryController::class, 'lowStock']); // Get low stock alerts
 });
 
 // Menu Categories routes
