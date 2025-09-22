@@ -34,6 +34,6 @@ class MenuItemController extends Controller
             'allergens' => $menuItem->allergens ?? []
         ];
 
-        return view('dashboardProfile.menuItemProfile', ['menuItem' => $data]);
+        return view('menu.menuItemProfile', ['menuItem' => $data]);
     }
 }
