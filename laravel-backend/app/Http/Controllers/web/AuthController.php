@@ -27,17 +27,26 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $credentials = $request->validate([
-            'email' => 'required|email',
+            'email' => 'required|email', // Reverted back to 'email'
             'password' => 'required|string|min:8',
         ]);
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
+
+            // Check if the authenticated user is an admin
+            if (Auth::user()->role !== 'admin') {
+                Auth::logout();
+                return back()->withErrors([
+                    'email' => 'Access denied. Only admin users are allowed.', // Reverted error key to 'email'
+                ]);
+            }
+
             return redirect()->intended('/dashboard'); // Redirect to dashboard after login
         }
 
         return back()->withErrors([
-            'email' => 'The provided credentials do not match our records.',
+            'email' => 'The provided credentials do not match our records.', // Reverted error key to 'email'
         ]);
     }
 
@@ -51,7 +60,7 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect('/login'); // Redirect to login page after logout
+        return redirect()->route('login'); // Redirect to login page after logout
     }
 
     /**

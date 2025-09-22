@@ -10,21 +10,11 @@
 
     <!-- Header -->
     <header class="bg-white shadow">
-        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+        <div class="mx-auto px-6 py-4 flex justify-between items-center">
             <!-- Brand -->
             <div>
                 <h1 class="text-2xl font-bold text-blue-700 tracking-tight">KaPlato</h1>
                 <p class="text-gray-500 text-sm">Admin Dashboard</p>
-            </div>
-            <!-- Actions -->
-            <div class="flex items-center gap-3">
-                <button class="hidden sm:block bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition">
-                    Generate Report
-                </button>
-                <!-- User Avatar Placeholder -->
-                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-700">
-                    JD
-                </div>
             </div>
         </div>
     </header>
@@ -76,6 +66,14 @@
                            {{ Route::is('dashboard.pending') ? 'bg-blue-100 text-blue-700 font-semibold' : '' }}">
                            <span>⏳</span> Pending
                         </a>
+                    </li>
+                    <li>
+                        <form method="POST" action="{{ route('logout') }}" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700">
+                            @csrf
+                            <button type="submit" class="flex items-center gap-2 w-full text-left">
+                                <span>🚪</span> Logout
+                            </button>
+                        </form>
                     </li>
                 </ul>
             </nav>
