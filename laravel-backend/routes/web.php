@@ -12,18 +12,11 @@ use App\Http\Controllers\web\ReportController;
 
 Route::get('/', [WebAuthController::class, 'showLoginForm'])->name('login');
 
-// Show login and registration forms
+// authentication routes
 Route::get('login', [WebAuthController::class, 'showLoginForm'])->name('login');
-Route::get('register', [WebAuthController::class, 'showRegistrationForm'])->name('register');
-
-// Handle login and registration submissions
 Route::post('login', [WebAuthController::class, 'login'])->name('authenticate');
-Route::post('register', [WebAuthController::class, 'register'])->name('store');
-
-// Logout route
 Route::post('logout', [WebAuthController::class, 'logout'])->name('logout');
 
-// Protect routes with authentication middleware
 Route::middleware(['auth'])->group(function () {
     // Dashboard route
     Route::get('dashboard', [DashController::class, 'showMainDashboard'])->name('dashboard');
