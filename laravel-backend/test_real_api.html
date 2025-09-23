@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test - Real Data Check</title>
+</head>
+<body>
+    <h1>🔍 API Test - Check Real Data</h1>
+    
+    <div>
+        <h2>1. First Login:</h2>
+        <button onclick="login()">Login with test@gmail.com</button>
+        <div id="loginResult"></div>
+    </div>
+    
+    <div>
+        <h2>2. Then Get Karenderia Data:</h2>
+        <button onclick="getKarenderia()">Get My Karenderia</button>
+        <div id="karenderiaResult"></div>
+    </div>
+    
+    <script>
+        let authToken = '';
+        
+        async function login() {
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'test@gmail.com',
+                        password: 'password'  // Change this to your actual password
+                    })
+                });
+                
+                const data = await response.json();
+                console.log('Login Response:', data);
+                
+                if (data.access_token) {
+                    authToken = data.access_token;
+                    document.getElementById('loginResult').innerHTML = 
+                        '✅ Login Success! Token: ' + authToken.substring(0, 20) + '...';
+                } else {
+                    document.getElementById('loginResult').innerHTML = 
+                        '❌ Login Failed: ' + JSON.stringify(data);
+                }
+            } catch (error) {
+                document.getElementById('loginResult').innerHTML = 
+                    '❌ Error: ' + error.message;
+            }
+        }
+        
+        async function getKarenderia() {
+            if (!authToken) {
+                alert('Please login first!');
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/karenderias/my-karenderia', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer ' + authToken,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                console.log('Karenderia Response:', data);
+                
+                document.getElementById('karenderiaResult').innerHTML = 
+                    '<h3>🏪 Your Real Karenderia Data:</h3>' +
+                    '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                    
+                // Check specifically what name is returned
+                if (data.success && data.data && data.data.name) {
+                    if (data.data.name === 'Mama\'s Kitchen') {
+                        alert('🚨 PROBLEM FOUND: API is returning "Mama\'s Kitchen" instead of your real data!');
+                    } else {
+                        alert('✅ GOOD: API is returning correct name: ' + data.data.name);
+                    }
+                }
+            } catch (error) {
+                document.getElementById('karenderiaResult').innerHTML = 
+                    '❌ Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

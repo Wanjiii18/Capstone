@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Direct API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .result { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Direct Backend API Test</h1>
+    
+    <div>
+        <h2>Step 1: Test Backend Health</h2>
+        <button onclick="testHealth()">Test Backend Health</button>
+        <div id="healthResult" class="result"></div>
+    </div>
+    
+    <div>
+        <h2>Step 2: Test Database Connection</h2>
+        <button onclick="testDatabase()">Test Database</button>
+        <div id="dbResult" class="result"></div>
+    </div>
+    
+    <div>
+        <h2>Step 3: Direct Login Test</h2>
+        <input type="email" id="email" placeholder="Email" value="test@gmail.com" style="padding: 8px; margin: 5px;">
+        <input type="password" id="password" placeholder="Password" value="password" style="padding: 8px; margin: 5px;">
+        <button onclick="testLogin()">Test Login</button>
+        <div id="loginResult" class="result"></div>
+    </div>
+    
+    <div>
+        <h2>Step 4: Test Karenderia API</h2>
+        <button onclick="testKarenderia()" id="karenderiaBtn" disabled>Test My Karenderia API</button>
+        <div id="karenderiaResult" class="result"></div>
+    </div>
+
+    <script>
+        let token = '';
+        
+        async function testHealth() {
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/health');
+                const data = await response.json();
+                document.getElementById('healthResult').innerHTML = 
+                    `<div class="success">✅ Backend is running!<br>Response: ${JSON.stringify(data)}</div>`;
+            } catch (error) {
+                document.getElementById('healthResult').innerHTML = 
+                    `<div class="error">❌ Backend not accessible: ${error.message}</div>`;
+            }
+        }
+        
+        async function testDatabase() {
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/karenderias');
+                const data = await response.json();
+                document.getElementById('dbResult').innerHTML = 
+                    `<div class="success">✅ Database connected!<br>Found ${data.data ? data.data.length : 0} karenderias</div>`;
+            } catch (error) {
+                document.getElementById('dbResult').innerHTML = 
+                    `<div class="error">❌ Database error: ${error.message}</div>`;
+            }
+        }
+        
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.access_token) {
+                    token = data.access_token;
+                    document.getElementById('loginResult').innerHTML = 
+                        `<div class="success">✅ Login successful!<br>User: ${data.user.name}<br>Token: ${token.substring(0, 20)}...</div>`;
+                    document.getElementById('karenderiaBtn').disabled = false;
+                } else {
+                    document.getElementById('loginResult').innerHTML = 
+                        `<div class="error">❌ Login failed: ${JSON.stringify(data)}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('loginResult').innerHTML = 
+                    `<div class="error">❌ Login error: ${error.message}</div>`;
+            }
+        }
+        
+        async function testKarenderia() {
+            if (!token) {
+                alert('Please login first!');
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/karenderias/my-karenderia', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                let resultHtml = `<h3>Raw API Response:</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                
+                if (data.success && data.data) {
+                    const name = data.data.name;
+                    if (name === 'Mama\'s Kitchen') {
+                        resultHtml += `<div class="error">🚨 PROBLEM: API returning "Mama's Kitchen" - backend data is wrong!</div>`;
+                    } else {
+                        resultHtml += `<div class="success">✅ CORRECT: API returning "${name}" - frontend cache issue!</div>`;
+                    }
+                } else {
+                    resultHtml += `<div class="error">❌ API Error: ${data.message || 'Unknown error'}</div>`;
+                }
+                
+                document.getElementById('karenderiaResult').innerHTML = resultHtml;
+                
+            } catch (error) {
+                document.getElementById('karenderiaResult').innerHTML = 
+                    `<div class="error">❌ API error: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

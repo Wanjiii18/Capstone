@@ -52,6 +52,11 @@ class MenuItem extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    public function dailyMenus(): HasMany
+    {
+        return $this->hasMany(DailyMenu::class);
+    }
+
     // Scope for available items
     public function scopeAvailable($query)
     {

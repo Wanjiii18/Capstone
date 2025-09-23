@@ -15,14 +15,15 @@ class KarenderiaController extends Controller
     public function index(): JsonResponse
     {
         try {
-            // Only return approved/active karenderias for customers
-            $karenderias = \App\Models\Karenderia::where('status', 'active')
+            // Only return approved karenderias for customers
+            $karenderias = \App\Models\Karenderia::where('status', 'approved')
                 ->with(['owner:id,name,email'])
                 ->get()
                 ->map(function ($karenderia) {
                     return [
                         'id' => $karenderia->id,
                         'name' => $karenderia->name,
+                        'business_name' => $karenderia->business_name,
                         'description' => $karenderia->description,
                         'address' => $karenderia->address,
                         'latitude' => $karenderia->latitude,
@@ -35,7 +36,7 @@ class KarenderiaController extends Controller
                         'deliveryTime' => $karenderia->delivery_time_minutes . ' min',
                         'deliveryFee' => $karenderia->delivery_fee,
                         'minimumOrder' => 100, // Default
-                        'isVerified' => $karenderia->status === 'active',
+                        'isVerified' => $karenderia->status === 'approved',
                         'specialties' => ['Filipino Cuisine'], // Can be enhanced later
                         'phone' => $karenderia->phone,
                         'email' => $karenderia->email,
@@ -64,8 +65,9 @@ class KarenderiaController extends Controller
     /**
      * Check if karenderia is currently open
      */
-    private function isKarenderiaOpen($karenderia): bool
+    private function isKarenderiaOpen($karenderia)
     {
+        // If no operating hours are set, consider it always open
         if (!$karenderia->opening_time || !$karenderia->closing_time) {
             return true; // Default to open if no hours specified
         }
@@ -74,13 +76,23 @@ class KarenderiaController extends Controller
         $currentDay = strtolower($now->format('l')); // monday, tuesday, etc.
         $currentTime = $now->format('H:i');
         
-        // Check if today is in operating days
-        if ($karenderia->operating_days && !in_array($currentDay, $karenderia->operating_days)) {
+        // Handle operating_days - ensure it's an array
+        $operatingDays = $karenderia->operating_days;
+        if (is_string($operatingDays)) {
+            $operatingDays = json_decode($operatingDays, true) ?: [];
+        }
+        
+        // Check if today is in operating days (if operating_days is empty array, consider always open)
+        if (!empty($operatingDays) && !in_array($currentDay, $operatingDays)) {
             return false;
         }
         
+        // Convert datetime objects to time string for comparison
+        $openingTime = $karenderia->opening_time->format('H:i');
+        $closingTime = $karenderia->closing_time->format('H:i');
+        
         // Check if current time is within operating hours
-        return $currentTime >= $karenderia->opening_time && $currentTime <= $karenderia->closing_time;
+        return $currentTime >= $openingTime && $currentTime <= $closingTime;
     }
 
     /**
@@ -97,6 +109,11 @@ class KarenderiaController extends Controller
             'saturday' => '8:00 AM - 10:00 PM',
             'sunday' => '9:00 AM - 9:00 PM'
         ];
+        
+        // Handle string input - convert to array
+        if (is_string($operatingDays)) {
+            $operatingDays = json_decode($operatingDays, true) ?: [];
+        }
         
         if (!$operatingDays) {
             return $defaultHours;
@@ -169,6 +186,7 @@ class KarenderiaController extends Controller
                 'data' => [
                     'id' => $karenderia->id,
                     'name' => $karenderia->name,
+                    'business_name' => $karenderia->business_name,
                     'description' => $karenderia->description,
                     'address' => $karenderia->address,
                     'phone' => $karenderia->phone,
@@ -475,6 +493,220 @@ class KarenderiaController extends Controller
                 'success' => false,
                 'message' => 'Failed to delete karenderia',
                 'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get nearby karenderias based on location
+     */
+    public function nearby(Request $request): JsonResponse
+    {
+        try {
+            $latitude = $request->get('lat') ?: $request->get('latitude');
+            $longitude = $request->get('lng') ?: $request->get('longitude');
+            $radius = $request->get('radius', 5000); // Default 5km radius
+            
+            if (!$latitude || !$longitude) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Latitude and longitude are required'
+                ], 400);
+            }
+
+            // Get all approved karenderias
+            $karenderias = \App\Models\Karenderia::where('status', 'approved')
+                ->with(['owner:id,name,email'])
+                ->get()
+                ->map(function ($karenderia) use ($latitude, $longitude) {
+                    // Calculate distance
+                    $distance = $this->calculateDistance(
+                        $latitude, 
+                        $longitude, 
+                        $karenderia->latitude, 
+                        $karenderia->longitude
+                    );
+                    
+                    return [
+                        'id' => $karenderia->id,
+                        'name' => $karenderia->name,
+                        'description' => $karenderia->description,
+                        'address' => $karenderia->address,
+                        'latitude' => $karenderia->latitude,
+                        'longitude' => $karenderia->longitude,
+                        'distance' => round($distance * 1000), // Convert to meters
+                        'rating' => $karenderia->rating ?: 4.0,
+                        'average_rating' => $karenderia->rating ?: 4.0,
+                        'isOpen' => $this->isKarenderiaOpen($karenderia),
+                        'cuisine' => 'Filipino',
+                        'priceRange' => '₱₱',
+                        'imageUrl' => $karenderia->logo_url ?: '/assets/images/restaurant-placeholder.jpg',
+                        'deliveryTime' => ($karenderia->delivery_time_minutes ?: 30) . ' min',
+                        'delivery_time_minutes' => $karenderia->delivery_time_minutes ?: 30,
+                        'deliveryFee' => $karenderia->delivery_fee ?: 50,
+                        'phone' => $karenderia->phone,
+                        'email' => $karenderia->email,
+                        'status' => $karenderia->status,
+                        'owner' => $karenderia->owner ? $karenderia->owner->name : 'Unknown'
+                    ];
+                })
+                ->filter(function ($karenderia) use ($radius) {
+                    // Filter by radius (in meters)
+                    return $karenderia['distance'] <= $radius;
+                })
+                ->sortBy('distance')
+                ->values();
+
+            return response()->json([
+                'success' => true,
+                'data' => $karenderias,
+                'message' => 'Nearby karenderias retrieved successfully',
+                'search_params' => [
+                    'lat' => $latitude,
+                    'lng' => $longitude,
+                    'radius' => $radius . 'm',
+                    'count' => $karenderias->count()
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error finding nearby karenderias: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Calculate distance between two coordinates using Haversine formula
+     */
+    private function calculateDistance($lat1, $lng1, $lat2, $lng2)
+    {
+        $earthRadius = 6371; // Earth's radius in kilometers
+
+        $lat1Rad = deg2rad($lat1);
+        $lng1Rad = deg2rad($lng1);
+        $lat2Rad = deg2rad($lat2);
+        $lng2Rad = deg2rad($lng2);
+
+        $deltaLat = $lat2Rad - $lat1Rad;
+        $deltaLng = $lng2Rad - $lng1Rad;
+
+        $a = sin($deltaLat / 2) * sin($deltaLat / 2) +
+             cos($lat1Rad) * cos($lat2Rad) *
+             sin($deltaLng / 2) * sin($deltaLng / 2);
+
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        return $earthRadius * $c;
+    }
+
+    /**
+     * Update karenderia data (for settings page)
+     */
+    public function updateKarenderiaData(Request $request, $id): JsonResponse
+    {
+        try {
+            $karenderia = \App\Models\Karenderia::findOrFail($id);
+            $user = $request->user();
+            
+            // Check if user owns this karenderia
+            if ($karenderia->owner_id !== $user->id && $user->role !== 'admin') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized to update this karenderia'
+                ], 403);
+            }
+
+            $validatedData = $request->validate([
+                'business_name' => 'sometimes|string|max:255',
+                'name' => 'sometimes|string|max:255',
+                'description' => 'sometimes|string',
+                'address' => 'sometimes|string',
+                'phone' => 'nullable|string|max:20',
+                'business_email' => 'nullable|email',
+                'email' => 'nullable|email',
+                'latitude' => 'nullable|numeric|between:-90,90',
+                'longitude' => 'nullable|numeric|between:-180,180',
+                'cuisine_type' => 'sometimes|string|max:50',
+                'opening_time' => 'nullable|date_format:H:i',
+                'closing_time' => 'nullable|date_format:H:i',
+                'operating_days' => 'nullable|array',
+                'delivery_fee' => 'nullable|numeric|min:0',
+                'delivery_time_minutes' => 'nullable|integer|min:0',
+                'accepts_cash' => 'boolean',
+                'accepts_online_payment' => 'boolean'
+            ]);
+
+            // Map business_email to email if provided
+            if (isset($validatedData['business_email'])) {
+                $validatedData['email'] = $validatedData['business_email'];
+                unset($validatedData['business_email']);
+            }
+
+            // Map business_name to name if provided
+            if (isset($validatedData['business_name'])) {
+                $validatedData['name'] = $validatedData['business_name'];
+                $validatedData['business_name'] = $validatedData['business_name']; // Keep both for compatibility
+            }
+
+            $karenderia->update($validatedData);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Karenderia updated successfully',
+                'data' => $karenderia->fresh()
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update karenderia',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get the current authenticated user's karenderia
+     */
+    public function getMyKarenderia(): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
+
+            if ($user->role !== 'karenderia_owner') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User is not a karenderia owner'
+                ], 403);
+            }
+
+            $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
+            
+            if (!$karenderia) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No karenderia found for this owner'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $karenderia
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving karenderia: ' . $e->getMessage()
             ], 500);
         }
     }

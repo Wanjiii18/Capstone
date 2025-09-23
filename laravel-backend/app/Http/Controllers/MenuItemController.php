@@ -8,11 +8,36 @@ use App\Models\MenuItem;
 
 class MenuItemController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // Return all menu items (for public browsing/admin)
-        $menuItems = MenuItem::with('karenderia')->get();
-        return response()->json(['data' => $menuItems]);
+        try {
+            $user = $request->user();
+            
+            if (!$user) {
+                return response()->json(['error' => 'User not authenticated'], 401);
+            }
+
+            // Get the user's karenderia
+            $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
+            
+            if (!$karenderia) {
+                // No karenderia exists for this user yet, return empty array
+                return response()->json(['data' => []]);
+            }
+
+            // Return only menu items that belong to this user's karenderia
+            $menuItems = MenuItem::with('karenderia')
+                ->where('karenderia_id', $karenderia->id)
+                ->get();
+                
+            return response()->json(['data' => $menuItems]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to fetch menu items',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function store(Request $request)
@@ -126,10 +151,37 @@ class MenuItemController extends Controller
         }
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
-        $menuItem = MenuItem::findOrFail($id);
-        return response()->json($menuItem);
+        try {
+            $user = $request->user();
+            
+            if (!$user) {
+                return response()->json(['error' => 'User not authenticated'], 401);
+            }
+
+            $menuItem = MenuItem::with('karenderia')->findOrFail($id);
+            
+            // Get the user's karenderia
+            $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
+            
+            if (!$karenderia) {
+                return response()->json(['error' => 'No karenderia found for this user'], 403);
+            }
+
+            // Check if the menu item belongs to the user's karenderia
+            if ($menuItem->karenderia_id !== $karenderia->id) {
+                return response()->json(['error' => 'Unauthorized: You can only view your own menu items'], 403);
+            }
+
+            return response()->json($menuItem);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to fetch menu item',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function update(Request $request, $id)
@@ -256,12 +308,39 @@ class MenuItemController extends Controller
         }
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
-        $menuItem = MenuItem::findOrFail($id);
-        $menuItem->delete();
+        try {
+            $user = $request->user();
+            
+            if (!$user) {
+                return response()->json(['error' => 'User not authenticated'], 401);
+            }
 
-        return response()->json(['message' => 'Menu item deleted successfully']);
+            $menuItem = MenuItem::findOrFail($id);
+            
+            // Get the user's karenderia
+            $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
+            
+            if (!$karenderia) {
+                return response()->json(['error' => 'No karenderia found for this user'], 403);
+            }
+
+            // Check if the menu item belongs to the user's karenderia
+            if ($menuItem->karenderia_id !== $karenderia->id) {
+                return response()->json(['error' => 'Unauthorized: You can only delete your own menu items'], 403);
+            }
+
+            $menuItem->delete();
+
+            return response()->json(['message' => 'Menu item deleted successfully']);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to delete menu item',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function getDailySales(Request $request)
@@ -566,5 +645,221 @@ class MenuItemController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Get menu items for the current user's karenderia
+     */
+    public function getMyMenuItems(Request $request)
+    {
+        try {
+            $user = $request->user();
+            
+            // Get the user's karenderia
+            $karenderia = \App\Models\Karenderia::where('owner_id', $user->id)->first();
+            
+            if (!$karenderia) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No karenderia found for this user',
+                    'data' => []
+                ], 404);
+            }
+
+            // Get menu items for this karenderia
+            $menuItems = MenuItem::where('karenderia_id', $karenderia->id)->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $menuItems
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to get menu items',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get all menu categories
+     */
+    public function getCategories()
+    {
+        try {
+            // Return predefined categories
+            $categories = [
+                'Main Dish',
+                'Appetizer',
+                'Dessert',
+                'Beverage',
+                'Rice Meals',
+                'Noodles',
+                'Soup',
+                'Snacks',
+                'Seafood',
+                'Vegetarian',
+                'Grilled',
+                'Fried'
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $categories
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to get categories',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get all ingredients
+     */
+    public function getIngredients()
+    {
+        try {
+            // Return predefined common ingredients
+            $ingredients = [
+                'Rice',
+                'Chicken',
+                'Pork',
+                'Beef',
+                'Fish',
+                'Vegetables',
+                'Onion',
+                'Garlic',
+                'Tomato',
+                'Soy Sauce',
+                'Vinegar',
+                'Salt',
+                'Pepper',
+                'Oil',
+                'Egg',
+                'Coconut Milk',
+                'Ginger',
+                'Chili',
+                'Lemon',
+                'Carrots',
+                'Potatoes',
+                'Green Beans',
+                'Cabbage',
+                'Noodles'
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $ingredients
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to get ingredients',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Create a new category
+     */
+    public function createCategory(Request $request)
+    {
+        try {
+            $request->validate([
+                'name' => 'required|string|max:255|unique:menu_categories,name'
+            ]);
+
+            // For now, just return success (could implement database storage later)
+            return response()->json([
+                'success' => true,
+                'message' => 'Category created successfully',
+                'data' => ['name' => $request->name]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to create category',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Create a new ingredient
+     */
+    public function createIngredient(Request $request)
+    {
+        try {
+            $request->validate([
+                'name' => 'required|string|max:255'
+            ]);
+
+            // For now, just return success (could implement database storage later)
+            return response()->json([
+                'success' => true,
+                'message' => 'Ingredient created successfully',
+                'data' => ['name' => $request->name]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to create ingredient',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update category (placeholder)
+     */
+    public function updateCategory(Request $request, $id)
+    {
+        return response()->json([
+            'success' => true,
+            'message' => 'Category updated successfully'
+        ]);
+    }
+
+    /**
+     * Delete category (placeholder)
+     */
+    public function deleteCategory($id)
+    {
+        return response()->json([
+            'success' => true,
+            'message' => 'Category deleted successfully'
+        ]);
+    }
+
+    /**
+     * Update ingredient (placeholder)
+     */
+    public function updateIngredient(Request $request, $id)
+    {
+        return response()->json([
+            'success' => true,
+            'message' => 'Ingredient updated successfully'
+        ]);
+    }
+
+    /**
+     * Delete ingredient (placeholder)
+     */
+    public function deleteIngredient($id)
+    {
+        return response()->json([
+            'success' => true,
+            'message' => 'Ingredient deleted successfully'
+        ]);
     }
 }
