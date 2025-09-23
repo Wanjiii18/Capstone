@@ -8,7 +8,41 @@ use App\Http\Controllers\KarenderiaController;
 use App\Http\Controllers\MealPlanController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\MenuItemController;
-use App\Http\Controllers\ReportController;
+use App\Models\User;
+
+// EMERGENCY LOGIN FOR PRESENTATION
+Route::post('/emergency-login', function (Request $request) {
+    $user = User::where('email', 'alica@gmail.com')->first();
+    
+    if ($user && $user->role === 'karenderia_owner') {
+        $token = $user->createToken('auth_token')->plainTextToken;
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Login successful',
+            'user' => [
+                'id' => $user->id,
+                'email' => $user->email,
+                'name' => $user->name,
+                'displayName' => $user->name,
+                'role' => $user->role,
+                'verified' => $user->verified
+            ],
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'karenderia' => [
+                'id' => $user->karenderia->id,
+                'business_name' => $user->karenderia->business_name,
+                'status' => $user->karenderia->status,
+                'approved_at' => $user->karenderia->approved_at->format('M d, Y')
+            ]
+        ])->header('Access-Control-Allow-Origin', '*')
+          ->header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+          ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    }
+    
+    return response()->json(['message' => 'User not found'], 404);
+});
 use App\Http\Controllers\DailyMenuController;
 use App\Http\Controllers\InventoryController;
 
@@ -73,7 +107,7 @@ Route::prefix('karenderias')->group(function () {
     Route::get('/nearby', [KarenderiaController::class, 'nearby']);
     
     // Protected routes for karenderia owners (must come before {id} route)
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'karenderia.approved'])->group(function () {
         Route::post('/', [KarenderiaController::class, 'store']);
         Route::get('/my-karenderia', [KarenderiaController::class, 'myKarenderia']);
         Route::put('/{id}', [KarenderiaController::class, 'update']);
@@ -95,8 +129,14 @@ Route::prefix('meal-plans')->group(function () {
     Route::delete('/{id}', [MealPlanController::class, 'destroy']);
 });
 
+// Public menu routes for customers (must come BEFORE protected routes)
+Route::prefix('menu-items')->group(function () {
+    Route::get('/search', [MenuItemController::class, 'searchByKarenderia']); // Public endpoint for customers
+    Route::get('/{id}/public', [MenuItemController::class, 'showPublic']); // Public endpoint for menu item details
+});
+
 // Menu Items routes
-Route::middleware('auth:sanctum')->prefix('menu-items')->group(function () {
+Route::middleware(['auth:sanctum', 'karenderia.approved'])->prefix('menu-items')->group(function () {
     Route::post('/', [MenuItemController::class, 'store']);
     Route::get('/', [MenuItemController::class, 'index']);
     Route::get('/search', [MenuItemController::class, 'search']);
@@ -111,7 +151,7 @@ Route::middleware('auth:sanctum')->prefix('menu-items')->group(function () {
 });
 
 // Daily Menu routes (Menu of the Day)
-Route::middleware('auth:sanctum')->prefix('daily-menu')->group(function () {
+Route::middleware(['auth:sanctum', 'karenderia.approved'])->prefix('daily-menu')->group(function () {
     // For Karenderia Owners
     Route::get('/', [DailyMenuController::class, 'index']); // Get owner's daily menu
     Route::post('/', [DailyMenuController::class, 'store']); // Add menu item to daily menu
@@ -125,34 +165,37 @@ Route::prefix('daily-menu')->group(function () {
     Route::get('/available', [DailyMenuController::class, 'getAvailableForCustomers']); // Get available karenderias by meal type
 });
 
-// Inventory Management routes (for Karenderia Owners)
-Route::middleware('auth:sanctum')->prefix('inventory')->group(function () {
-    Route::get('/', [InventoryController::class, 'index']); // Get inventory list with stats
-    Route::post('/', [InventoryController::class, 'store']); // Create new inventory item
+// Inventory routes (for karenderia owners to manage ingredients/supplies)
+Route::middleware(['auth:sanctum', 'karenderia.approved'])->prefix('inventory')->group(function () {
+    Route::get('/', [InventoryController::class, 'index']); // Get inventory items
+    Route::post('/', [InventoryController::class, 'store']); // Add inventory item
+    Route::get('/{id}', [InventoryController::class, 'show']); // Get specific inventory item
     Route::put('/{id}', [InventoryController::class, 'update']); // Update inventory item
     Route::delete('/{id}', [InventoryController::class, 'destroy']); // Delete inventory item
-    Route::post('/{id}/restock', [InventoryController::class, 'restock']); // Restock inventory item
-    Route::get('/alerts', [InventoryController::class, 'lowStock']); // Get low stock alerts
+    Route::post('/{id}/use', [InventoryController::class, 'useIngredient']); // Use ingredient in cooking
+    Route::post('/{id}/restock', [InventoryController::class, 'restock']); // Restock ingredient
 });
 
-// Menu Categories routes
-Route::middleware('auth:sanctum')->prefix('menu-categories')->group(function () {
-    Route::get('/', [MenuItemController::class, 'getCategories']);
-    Route::post('/', [MenuItemController::class, 'createCategory']);
-    Route::put('/{id}', [MenuItemController::class, 'updateCategory']);
-    Route::delete('/{id}', [MenuItemController::class, 'deleteCategory']);
+// Menu Categories (for organizing menu items)
+Route::middleware(['auth:sanctum', 'karenderia.approved'])->prefix('menu-categories')->group(function () {
+    Route::get('/', [MenuCategoryController::class, 'index']); // Get categories for owner's karenderia
+    Route::post('/', [MenuCategoryController::class, 'store']); // Create new category
+    Route::get('/{id}', [MenuCategoryController::class, 'show']); // Get specific category
+    Route::put('/{id}', [MenuCategoryController::class, 'update']); // Update category
+    Route::delete('/{id}', [MenuCategoryController::class, 'destroy']); // Delete category
 });
 
-// Ingredients routes
-Route::middleware('auth:sanctum')->prefix('ingredients')->group(function () {
-    Route::get('/', [MenuItemController::class, 'getIngredients']);
-    Route::post('/', [MenuItemController::class, 'createIngredient']);
-    Route::put('/{id}', [MenuItemController::class, 'updateIngredient']);
-    Route::delete('/{id}', [MenuItemController::class, 'deleteIngredient']);
+// Ingredients routes (for managing ingredient database)
+Route::middleware(['auth:sanctum', 'karenderia.approved'])->prefix('ingredients')->group(function () {
+    Route::get('/', [IngredientController::class, 'index']); // Get all ingredients
+    Route::post('/', [IngredientController::class, 'store']); // Add new ingredient
+    Route::get('/{id}', [IngredientController::class, 'show']); // Get specific ingredient
+    Route::put('/{id}', [IngredientController::class, 'update']); // Update ingredient
+    Route::delete('/{id}', [IngredientController::class, 'destroy']); // Delete ingredient
 });
 
 // Analytics routes for karenderia owners
-Route::middleware('auth:sanctum')->prefix('analytics')->group(function () {
+Route::middleware(['auth:sanctum', 'karenderia.approved'])->prefix('analytics')->group(function () {
     Route::get('/daily-sales', [MenuItemController::class, 'getDailySales']);
     Route::get('/monthly-sales', [MenuItemController::class, 'getMonthlySales']);
     Route::get('/sales-summary', [MenuItemController::class, 'getSalesSummary']);

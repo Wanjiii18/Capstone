@@ -136,32 +136,62 @@ class KarenderiaController extends Controller
      */
     public function show($id): JsonResponse
     {
-        // This would normally fetch from database
-        // For now, return mock data
-        $karenderia = [
-            'id' => $id,
-            'name' => 'Mama\'s Kitchen',
-            'description' => 'Authentic Filipino home cooking',
-            'address' => '123 Main St, Cebu City',
-            'latitude' => 10.3157,
-            'longitude' => 123.8854,
-            'rating' => 4.5,
-            'isOpen' => true,
-            'cuisine' => 'Filipino',
-            'priceRange' => '₱₱',
-            'imageUrl' => '/assets/images/restaurant-placeholder.jpg',
-            'deliveryTime' => '25-35 min',
-            'deliveryFee' => 25,
-            'minimumOrder' => 150,
-            'isVerified' => true,
-            'specialties' => ['Adobo', 'Lechon', 'Kare-kare']
-        ];
+        try {
+            // Fetch the actual karenderia from database
+            $karenderia = \App\Models\Karenderia::with(['owner:id,name,email'])
+                ->where('id', $id)
+                ->where('status', 'approved') // Only show approved karenderias
+                ->first();
 
-        return response()->json([
-            'success' => true,
-            'data' => $karenderia,
-            'message' => 'Karenderia retrieved successfully'
-        ]);
+            if (!$karenderia) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Karenderia not found or not approved',
+                    'data' => null
+                ], 404);
+            }
+
+            $karenderiaData = [
+                'id' => $karenderia->id,
+                'name' => $karenderia->name,
+                'business_name' => $karenderia->business_name,
+                'description' => $karenderia->description,
+                'address' => $karenderia->address,
+                'latitude' => $karenderia->latitude,
+                'longitude' => $karenderia->longitude,
+                'rating' => $karenderia->average_rating,
+                'isOpen' => $this->isKarenderiaOpen($karenderia),
+                'cuisine' => 'Filipino', // Default for now
+                'priceRange' => '₱₱',
+                'imageUrl' => $karenderia->logo_url ?: '/assets/images/restaurant-placeholder.jpg',
+                'deliveryTime' => $karenderia->delivery_time_minutes . ' min',
+                'deliveryFee' => $karenderia->delivery_fee,
+                'minimumOrder' => 100, // Default
+                'isVerified' => $karenderia->status === 'approved',
+                'specialties' => ['Filipino Cuisine'], // Can be enhanced later
+                'phone' => $karenderia->phone,
+                'email' => $karenderia->email,
+                'operatingHours' => $this->formatOperatingHours($karenderia->operating_days),
+                'accepts_cash' => $karenderia->accepts_cash,
+                'accepts_online_payment' => $karenderia->accepts_online_payment,
+                'owner' => $karenderia->owner ? $karenderia->owner->name : 'Unknown',
+                'status' => $karenderia->status
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $karenderiaData,
+                'message' => 'Karenderia retrieved successfully'
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve karenderia',
+                'error' => $e->getMessage(),
+                'data' => null
+            ], 500);
+        }
     }
 
     /**
