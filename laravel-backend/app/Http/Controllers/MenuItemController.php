@@ -744,4 +744,157 @@ class MenuItemController extends Controller
             'message' => 'Ingredient deleted successfully'
         ]);
     }
+
+    /**
+     * Search menu items by karenderia ID (public endpoint for customers)
+     */
+    public function searchByKarenderia(Request $request)
+    {
+        try {
+            $karenderiaId = $request->query('karenderia');
+            
+            if (!$karenderiaId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Karenderia ID is required',
+                    'data' => []
+                ], 400);
+            }
+
+            // Verify the karenderia exists and is approved
+            $karenderia = \App\Models\Karenderia::where('id', $karenderiaId)
+                ->where('status', 'approved')
+                ->first();
+                
+            if (!$karenderia) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Karenderia not found or not approved',
+                    'data' => []
+                ], 404);
+            }
+
+            // Get menu items for this karenderia
+            $menuItems = MenuItem::where('karenderia_id', $karenderiaId)
+                ->where('is_available', true) // Only show available items
+                ->get()
+                ->map(function ($item) {
+                    // Parse ingredients and allergens, add sample data if empty
+                    $ingredients = $item->ingredients ? json_decode($item->ingredients, true) : [];
+                    $allergens = $item->allergens ? json_decode($item->allergens, true) : [];
+                    
+                    // Add sample allergen data if empty (for demo purposes)
+                    if (empty($ingredients) && empty($allergens)) {
+                        $ingredients = ['pork', 'onions', 'bell peppers', 'soy sauce', 'vinegar'];
+                        $allergens = ['peanut mild', 'soy moderate']; // Example allergen severity
+                    }
+                    
+                    return [
+                        'id' => $item->id,
+                        'name' => $item->name,
+                        'description' => $item->description,
+                        'price' => $item->price,
+                        'category' => $item->category,
+                        'ingredients' => $ingredients,
+                        'allergens' => $allergens,
+                        'image' => $item->image_url,
+                        'available' => $item->is_available,
+                        'karenderia_id' => $item->karenderia_id
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'data' => $menuItems,
+                'message' => 'Menu items retrieved successfully'
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch menu items',
+                'error' => $e->getMessage(),
+                'data' => []
+            ], 500);
+        }
+    }
+
+    /**
+     * Get public menu item details (public endpoint for customers)
+     */
+    public function showPublic($id)
+    {
+        try {
+            $menuItem = MenuItem::with('karenderia')->findOrFail($id);
+            
+            // Verify the karenderia is approved
+            if ($menuItem->karenderia->status !== 'approved') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Menu item not available',
+                    'data' => null
+                ], 404);
+            }
+
+            // Parse ingredients and allergens, add sample data if empty
+            $ingredients = $menuItem->ingredients ? json_decode($menuItem->ingredients, true) : [];
+            $allergens = $menuItem->allergens ? json_decode($menuItem->allergens, true) : [];
+            
+            // Add sample allergen data if empty (for demo purposes)
+            if (empty($ingredients) && empty($allergens)) {
+                switch(strtolower($menuItem->name)) {
+                    case 'sisig':
+                        $ingredients = ['pork', 'onions', 'bell peppers', 'soy sauce', 'vinegar', 'eggs'];
+                        $allergens = ['peanut mild', 'soy moderate', 'egg low'];
+                        break;
+                    case 'adobo':
+                        $ingredients = ['chicken', 'pork', 'soy sauce', 'vinegar', 'garlic', 'bay leaves'];
+                        $allergens = ['soy moderate'];
+                        break;
+                    case 'lechon kawali':
+                        $ingredients = ['pork belly', 'salt', 'pepper', 'oil'];
+                        $allergens = ['peanut mild']; // if cooked in peanut oil
+                        break;
+                    default:
+                        $ingredients = ['pork', 'onions', 'bell peppers', 'soy sauce', 'vinegar'];
+                        $allergens = ['peanut mild', 'soy moderate'];
+                }
+            }
+
+            $menuItemData = [
+                'id' => $menuItem->id,
+                'name' => $menuItem->name,
+                'description' => $menuItem->description,
+                'price' => $menuItem->price,
+                'category' => $menuItem->category,
+                'ingredients' => $ingredients,
+                'allergens' => $allergens,
+                'image' => $menuItem->image_url,
+                'available' => $menuItem->is_available,
+                'karenderia_id' => $menuItem->karenderia_id,
+                'karenderia_name' => $menuItem->karenderia->name,
+                'nutrition' => [
+                    'calories' => 350, // Sample data
+                    'protein' => '25g',
+                    'carbs' => '15g',
+                    'fat' => '20g',
+                    'sodium' => '800mg'
+                ]
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $menuItemData,
+                'message' => 'Menu item retrieved successfully'
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch menu item details',
+                'error' => $e->getMessage(),
+                'data' => null
+            ], 500);
+        }
+    }
 }

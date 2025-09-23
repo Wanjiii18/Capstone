@@ -36,13 +36,15 @@ class AuthController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => $request->role ?? 'customer',
-            'verified' => false
+            'role' => 'customer', // Force customer role for regular registration
+            'verified' => true // Auto-approve customers
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
+            'success' => true,
+            'message' => 'Account created successfully! Welcome to KaPlato!',
             'user' => [
                 'id' => $user->id,
                 'email' => $user->email,
@@ -110,6 +112,7 @@ class AuthController extends Controller
 
             // Create karenderia business record
             $karenderia = $user->karenderia()->create([
+                'name' => $request->business_name, // Use business_name as the name
                 'business_name' => $request->business_name,
                 'description' => $request->description,
                 'address' => $request->address,
@@ -131,17 +134,16 @@ class AuthController extends Controller
                 'approved_by' => null
             ]);
 
-            $token = $user->createToken('auth_token')->plainTextToken;
-
+            // Don't create token - user must wait for approval then login separately
             return response()->json([
-                'message' => 'Karenderia owner registration successful. Your application is now pending admin approval.',
+                'success' => true,
+                'message' => 'Karenderia registration submitted successfully! Your application is now pending admin approval. Please wait for approval before attempting to login.',
+                'status' => 'pending_approval',
                 'user' => [
                     'id' => $user->id,
                     'email' => $user->email,
                     'name' => $user->name,
-                    'displayName' => $user->name,
-                    'role' => $user->role,
-                    'verified' => $user->verified
+                    'role' => $user->role
                 ],
                 'karenderia' => [
                     'id' => $karenderia->id,
@@ -149,8 +151,8 @@ class AuthController extends Controller
                     'status' => $karenderia->status,
                     'address' => $karenderia->address
                 ],
-                'access_token' => $token,
-                'token_type' => 'Bearer'
+                // No access_token - require separate login after approval
+                'next_step' => 'Wait for admin approval, then login with your credentials'
             ], 201);
 
         } catch (\Exception $e) {
@@ -166,12 +168,20 @@ class AuthController extends Controller
      */
     public function login(Request $request): JsonResponse
     {
+        // Log the incoming request for debugging
+        \Log::info('Login attempt:', [
+            'request_data' => $request->all(),
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent()
+        ]);
+
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
             'password' => 'required'
         ]);
 
         if ($validator->fails()) {
+            \Log::warning('Login validation failed:', $validator->errors()->toArray());
             return response()->json([
                 'message' => 'Validation failed',
                 'errors' => $validator->errors()
@@ -179,15 +189,61 @@ class AuthController extends Controller
         }
 
         if (!Auth::attempt($request->only('email', 'password'))) {
+            \Log::warning('Login auth failed for email: ' . $request->email);
             return response()->json([
                 'message' => 'Invalid credentials'
-            ], 401);
+            ], 401)->header('Access-Control-Allow-Origin', '*')
+                     ->header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+                     ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
         }
 
         $user = Auth::user();
+        \Log::info('User authenticated successfully:', ['user_id' => $user->id, 'email' => $user->email, 'role' => $user->role]);
+
+        // Only check karenderia business approval for karenderia owners
+        if ($user->role === 'karenderia_owner') {
+            $karenderia = $user->karenderia;
+            
+            if (!$karenderia) {
+                return response()->json([
+                    'message' => 'Karenderia application not found'
+                ], 403);
+            }
+            
+            if ($karenderia->status === 'pending') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your karenderia application is still pending admin approval. Please wait for approval before logging in.',
+                    'status' => 'pending_approval',
+                    'application_details' => [
+                        'business_name' => $karenderia->business_name,
+                        'submitted_at' => $karenderia->created_at->format('M d, Y'),
+                        'status' => 'pending'
+                    ]
+                ], 403);
+            }
+            
+            if ($karenderia->status === 'rejected') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your karenderia application was rejected. Reason: ' . ($karenderia->rejection_reason ?? 'Not specified'),
+                    'status' => 'rejected',
+                    'application_details' => [
+                        'business_name' => $karenderia->business_name,
+                        'rejected_at' => $karenderia->rejected_at ? $karenderia->rejected_at->format('M d, Y') : null,
+                        'rejection_reason' => $karenderia->rejection_reason,
+                        'status' => 'rejected'
+                    ]
+                ], 403);
+            }
+        }
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        return response()->json([
+        // Include karenderia status for approved owners
+        $response = [
+            'success' => true,
+            'message' => 'Login successful',
             'user' => [
                 'id' => $user->id,
                 'email' => $user->email,
@@ -198,7 +254,21 @@ class AuthController extends Controller
             ],
             'access_token' => $token,
             'token_type' => 'Bearer'
-        ]);
+        ];
+
+        // Add karenderia info for approved owners
+        if ($user->role === 'karenderia_owner' && $user->karenderia && $user->karenderia->status === 'approved') {
+            $response['karenderia'] = [
+                'id' => $user->karenderia->id,
+                'business_name' => $user->karenderia->business_name,
+                'status' => $user->karenderia->status,
+                'approved_at' => $user->karenderia->approved_at->format('M d, Y')
+            ];
+        }
+
+        return response()->json($response)->header('Access-Control-Allow-Origin', '*')
+                                        ->header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+                                        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     }
 
     /**

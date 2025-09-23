@@ -27,6 +27,8 @@ class Karenderia extends Model
         'status',
         'approved_at',
         'approved_by',
+        'rejected_at',
+        'rejection_reason',
         'business_permit',
         'logo_url',
         'images',
@@ -49,7 +51,8 @@ class Karenderia extends Model
         'accepts_online_payment' => 'boolean',
         'opening_time' => 'datetime:H:i',
         'closing_time' => 'datetime:H:i',
-        'approved_at' => 'datetime'
+        'approved_at' => 'datetime',
+        'rejected_at' => 'datetime'
     ];
 
     public function owner(): BelongsTo
