@@ -23,7 +23,7 @@ return new class extends Migration
             $table->foreign('menu_item_id')->references('id')->on('menu_items')->onDelete('cascade');
             $table->foreign('inventory_id')->references('id')->on('inventory')->onDelete('cascade');
         });
-    }
+    } 
 
     public function down(): void
     {
