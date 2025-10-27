@@ -49,6 +49,9 @@ class AdminWebController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             \Log::error('Validation error in admin login', ['errors' => $e->errors()]);
             return back()->withErrors($e->errors())->withInput();
+        } catch (\Illuminate\Session\TokenMismatchException $e) {
+            \Log::error('CSRF token mismatch in admin login');
+            return redirect()->route('admin.login')->withErrors(['email' => 'Session expired. Please try again.']);
         } catch (\Exception $e) {
             \Log::error('Admin login error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return back()->withErrors(['email' => 'Login failed. Please try again.'])->withInput();

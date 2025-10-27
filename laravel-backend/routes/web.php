@@ -4,8 +4,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\web\AdminWebController;
 use App\Http\Controllers\web\PendingController;
 
+// Redirect root URL to admin login
 Route::get('/', function () {
-    return view('welcome');
+    return redirect('/admin/login');
 });
 
 // Admin Web Interface Routes
