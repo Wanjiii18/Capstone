@@ -7,38 +7,38 @@
 <div class="row">
     <div class="col-12">
         <div class="card">
-            <div class="card-header">
+            <div class="card-header py-2">
                 <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">
+                    <h6 class="card-title mb-0">
                         <i class="fas fa-users me-2"></i>All Users
-                    </h5>
-                    <span class="badge bg-primary fs-6">{{ $users->total() }} users</span>
+                    </h6>
+                    <span class="badge bg-primary">{{ $users->total() }} users</span>
                 </div>
             </div>
-            <div class="card-body">
+            <div class="card-body p-0">
                 @if($users->count() > 0)
                     <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
+                        <table class="table table-hover table-sm mb-0">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>User</th>
+                                    <th class="ps-3">User</th>
                                     <th>Role</th>
-                                    <th>Email Verified</th>
-                                    <th>Registration Date</th>
-                                    <th>Status</th>
+                                    <th>Verified</th>
+                                    <th>Registered</th>
+                                    <th class="pe-3">Status</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($users as $user)
                                 <tr>
-                                    <td>
+                                    <td class="ps-3">
                                         <div class="d-flex align-items-center">
-                                            <div class="avatar-circle me-3">
+                                            <div class="avatar-sm me-2">
                                                 <i class="fas fa-user"></i>
                                             </div>
                                             <div>
-                                                <strong>{{ $user->name }}</strong>
-                                                <br><small class="text-muted">{{ $user->email }}</small>
+                                                <div class="fw-semibold">{{ $user->name }}</div>
+                                                <small class="text-muted">{{ $user->email }}</small>
                                             </div>
                                         </div>
                                     </td>
@@ -46,7 +46,7 @@
                                         @if($user->role === 'admin')
                                             <span class="badge bg-danger">Admin</span>
                                         @elseif($user->role === 'karenderia_owner')
-                                            <span class="badge bg-warning">Karenderia Owner</span>
+                                            <span class="badge bg-warning text-dark">Karenderia Owner</span>
                                         @else
                                             <span class="badge bg-primary">Customer</span>
                                         @endif
@@ -54,19 +54,19 @@
                                     <td>
                                         @if($user->email_verified_at)
                                             <span class="badge bg-success">
-                                                <i class="fas fa-check me-1"></i>Verified
+                                                <i class="fas fa-check"></i> Verified
                                             </span>
                                         @else
-                                            <span class="badge bg-warning">
-                                                <i class="fas fa-clock me-1"></i>Pending
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="fas fa-clock"></i> Pending
                                             </span>
                                         @endif
                                     </td>
                                     <td>
-                                        <span class="badge bg-light text-dark">{{ $user->created_at->format('M d, Y') }}</span>
-                                        <br><small class="text-muted">{{ $user->created_at->diffForHumans() }}</small>
+                                        <div>{{ $user->created_at->format('M d, Y') }}</div>
+                                        <small class="text-muted">{{ $user->created_at->diffForHumans() }}</small>
                                     </td>
-                                    <td>
+                                    <td class="pe-3">
                                         @if($user->role === 'karenderia_owner')
                                             @php
                                                 $karenderia = $user->karenderia;
@@ -75,7 +75,7 @@
                                                 @if($karenderia->status === 'approved')
                                                     <span class="badge bg-success">Active</span>
                                                 @elseif($karenderia->status === 'pending')
-                                                    <span class="badge bg-warning">Pending Approval</span>
+                                                    <span class="badge bg-warning text-dark">Pending Approval</span>
                                                 @else
                                                     <span class="badge bg-danger">Rejected</span>
                                                 @endif
@@ -93,14 +93,14 @@
                     </div>
                     
                     <!-- Pagination -->
-                    <div class="d-flex justify-content-center mt-4">
+                    <div class="d-flex justify-content-center p-3 border-top">
                         {{ $users->links() }}
                     </div>
                 @else
                     <div class="text-center py-5">
-                        <i class="fas fa-users fa-4x text-muted mb-3"></i>
-                        <h4>No Users Found</h4>
-                        <p class="text-muted">No registered users at the moment.</p>
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h5>No Users Found</h5>
+                        <p class="text-muted mb-0">No registered users at the moment.</p>
                     </div>
                 @endif
             </div>
@@ -111,15 +111,37 @@
 
 @section('scripts')
 <style>
-.avatar-circle {
-    width: 40px;
-    height: 40px;
+.avatar-sm {
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.table-sm td {
+    padding: 0.5rem;
+    vertical-align: middle;
+}
+
+.table-sm th {
+    padding: 0.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.fw-semibold {
+    font-weight: 600;
 }
 </style>
 @endsection
