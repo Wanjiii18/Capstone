@@ -5,11 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Karenderia;
 use App\Models\MenuItem;
 use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\Inventory;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
@@ -746,6 +744,64 @@ class AdminController extends Controller
             'data' => $user
         ]);
     }
+
+    //<?php
+/**
+ * Delete supplier account with cascading cleanup
+ * Removes supplier and all related data (listings, orders, quotes)
+ */
+
+
+// public function deleteSupplier($userId)
+// {
+//     $user = User::findOrFail($userId);
+    
+//     // Verify it's actually a supplier
+//     if ($user->role !== 'supplier') {
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Target user is not a supplier'
+//         ], 422);
+//     }
+
+//     try {
+//         DB::beginTransaction();
+
+//         // Delete supplier inventory items (their product listings)
+//         \App\Models\SupplierInventoryItem::where('supplier_id', $user->id)->delete();
+        
+//         // Delete supply orders associated with this supplier
+//         \App\Models\SupplyOrder::where('supplier_id', $user->id)->delete();
+        
+//         // Delete supplier quotes
+//         \App\Models\SupplierQuote::where('supplier_id', $user->id)->delete();
+        
+//         // Delete messages related to this supplier
+//         \App\Models\Message::where('sender_id', $user->id)
+//             ->orWhere('receiver_id', $user->id)
+//             ->delete();
+        
+//         // Delete suki relationships (karenderia-supplier relationships)
+//         \App\Models\KarenderiaSupplierSuki::where('supplier_id', $user->id)->delete();
+        
+//         // Delete the supplier user account
+//         $user->delete();
+
+//         DB::commit();
+
+//         return response()->json([
+//             'success' => true,
+//             'message' => 'Supplier account and all related data deleted successfully'
+//         ]);
+//     } catch (\Exception $e) {
+//         DB::rollBack();
+        
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Failed to delete supplier: ' . $e->getMessage()
+//         ], 500);
+//     }
+// }
 
     /**
      * Update user role

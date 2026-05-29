@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\MenuItem;
+use App\Models\Karenderia;
+use App\Models\Order;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class MenuItemController extends Controller
@@ -392,6 +395,152 @@ class MenuItemController extends Controller
             'average_order_value' => 147.06,
             'karenderia_id' => $karenderia->id
         ]);
+    }
+
+    /**
+     * Sales analytics for POS / owner dashboard (matches frontend AnalyticsService)
+     */
+    public function getSalesAnalytics(Request $request, $karenderiaId)
+    {
+        $user = $request->user();
+        $karenderiaId = (int) $karenderiaId;
+        $period = $request->get('period', 'daily');
+
+        if (!$this->userCanAccessKarenderia($user, $karenderiaId)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $ordersQuery = Order::where('karenderia_id', $karenderiaId)
+            ->where('payment_status', 'paid');
+
+        if ($period === 'daily') {
+            $ordersQuery->whereDate('created_at', today());
+        } elseif ($period === 'weekly') {
+            $ordersQuery->where('created_at', '>=', now()->subDays(7));
+        } elseif ($period === 'monthly') {
+            $ordersQuery->whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year);
+        }
+
+        $orders = $ordersQuery->get();
+        $totalSales = (float) $orders->sum('total_amount');
+        $totalOrders = $orders->count();
+        $totalProfit = $totalSales - (float) $orders->sum('total_cost');
+        $averageOrderValue = $totalOrders > 0 ? $totalSales / $totalOrders : 0;
+
+        $topSellingItems = DB::table('order_items')
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->join('menu_items', 'menu_items.id', '=', 'order_items.menu_item_id')
+            ->where('orders.karenderia_id', $karenderiaId)
+            ->where('orders.payment_status', 'paid')
+            ->when($period === 'daily', fn ($q) => $q->whereDate('orders.created_at', today()))
+            ->when($period === 'weekly', fn ($q) => $q->where('orders.created_at', '>=', now()->subDays(7)))
+            ->when($period === 'monthly', function ($q) {
+                $q->whereMonth('orders.created_at', now()->month)
+                    ->whereYear('orders.created_at', now()->year);
+            })
+            ->groupBy('order_items.menu_item_id', 'menu_items.name')
+            ->selectRaw('order_items.menu_item_id as menu_item_id, menu_items.name as menu_item_name, SUM(order_items.quantity) as quantity_sold, SUM(order_items.total_price) as revenue')
+            ->orderByDesc('quantity_sold')
+            ->limit(5)
+            ->get()
+            ->map(fn ($row) => [
+                'menuItemId' => (string) $row->menu_item_id,
+                'menuItemName' => $row->menu_item_name,
+                'quantitySold' => (int) $row->quantity_sold,
+                'revenue' => round((float) $row->revenue, 2),
+            ])
+            ->values();
+
+        return response()->json([
+            'data' => [
+                'karenderiaId' => (string) $karenderiaId,
+                'period' => $period,
+                'date' => now()->toISOString(),
+                'totalSales' => round($totalSales, 2),
+                'totalOrders' => $totalOrders,
+                'averageOrderValue' => round($averageOrderValue, 2),
+                'totalProfit' => round($totalProfit, 2),
+                'topSellingItems' => $topSellingItems,
+            ],
+        ]);
+    }
+
+    /**
+     * Popular items filtered by season tag stored on POS orders
+     */
+    public function getPopularItemsBySeason(Request $request)
+    {
+        $user = $request->user();
+        $karenderiaId = (int) $request->get('karenderiaId');
+        $season = strtolower((string) $request->get('season', 'summer'));
+
+        if (!$karenderiaId || !$this->userCanAccessKarenderia($user, $karenderiaId)) {
+            return response()->json(['data' => []]);
+        }
+
+        $orders = Order::where('karenderia_id', $karenderiaId)
+            ->where('payment_status', 'paid')
+            ->where('created_at', '>=', now()->subMonths(3))
+            ->get(['id', 'order_tracking']);
+
+        $orderIds = $orders->filter(function ($order) use ($season) {
+            $seasonal = $order->order_tracking['seasonal_data']['season'] ?? null;
+            return strtolower((string) $seasonal) === $season;
+        })->pluck('id');
+
+        if ($orderIds->isEmpty()) {
+            $popular = MenuItem::where('karenderia_id', $karenderiaId)
+                ->orderByDesc('total_orders')
+                ->limit(5)
+                ->get(['id', 'name', 'price', 'total_orders'])
+                ->map(fn ($item) => [
+                    'menuItemId' => (string) $item->id,
+                    'menuItemName' => $item->name,
+                    'quantitySold' => (int) ($item->total_orders ?? 0),
+                    'revenue' => round(((float) $item->price) * ((int) ($item->total_orders ?? 0)), 2),
+                    'season' => $season,
+                ]);
+
+            return response()->json(['data' => $popular]);
+        }
+
+        $popular = DB::table('order_items')
+            ->join('menu_items', 'menu_items.id', '=', 'order_items.menu_item_id')
+            ->whereIn('order_items.order_id', $orderIds)
+            ->groupBy('order_items.menu_item_id', 'menu_items.name')
+            ->selectRaw('order_items.menu_item_id as menu_item_id, menu_items.name as menu_item_name, SUM(order_items.quantity) as quantity_sold, SUM(order_items.total_price) as revenue')
+            ->orderByDesc('quantity_sold')
+            ->limit(5)
+            ->get()
+            ->map(fn ($row) => [
+                'menuItemId' => (string) $row->menu_item_id,
+                'menuItemName' => $row->menu_item_name,
+                'quantitySold' => (int) $row->quantity_sold,
+                'revenue' => round((float) $row->revenue, 2),
+                'season' => $season,
+            ]);
+
+        return response()->json(['data' => $popular]);
+    }
+
+    private function userCanAccessKarenderia($user, int $karenderiaId): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        if ($user->role === 'admin') {
+            return true;
+        }
+
+        if ($user->role === 'karenderia_owner') {
+            return Karenderia::where('id', $karenderiaId)
+                ->where('owner_id', $user->id)
+                ->exists();
+        }
+
+        return false;
     }
 
     /**

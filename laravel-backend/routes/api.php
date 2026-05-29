@@ -54,6 +54,7 @@ use App\Http\Controllers\IngredientRequestController;
 use App\Http\Controllers\SupplierQuoteController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\SupplyOrderMessageController;
+use App\Http\Controllers\OrderController;
 
 /*
 |--------------------------------------------------------------------------
@@ -283,11 +284,20 @@ Route::middleware(['auth:sanctum', 'karenderia.approved'])->prefix('ingredients'
     Route::delete('/{id}', [IngredientController::class, 'destroy']); // Delete ingredient
 });
 
+// POS / kitchen sales orders (karenderia owner)
+Route::middleware(['auth:sanctum', 'karenderia.approved'])->group(function () {
+    Route::post('/orders', [OrderController::class, 'store']);
+    Route::get('/orders/recent', [OrderController::class, 'getRecentOrders']);
+    Route::put('/orders/{id}', [OrderController::class, 'updateStatus']);
+});
+
 // Analytics routes for karenderia owners
 Route::middleware(['auth:sanctum', 'karenderia.approved'])->prefix('analytics')->group(function () {
     Route::get('/daily-sales', [MenuItemController::class, 'getDailySales']);
     Route::get('/monthly-sales', [MenuItemController::class, 'getMonthlySales']);
     Route::get('/sales-summary', [MenuItemController::class, 'getSalesSummary']);
+    Route::get('/sales/{karenderiaId}', [MenuItemController::class, 'getSalesAnalytics']);
+    Route::get('/popular-items/season', [MenuItemController::class, 'getPopularItemsBySeason']);
 });
 
 // Admin routes (Protected - Admin only)
@@ -325,6 +335,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/suppliers', [AdminController::class, 'getSuppliers']);
     Route::put('/suppliers/{userId}/application-status', [AdminController::class, 'updateSupplierApplicationStatus']);
     Route::put('/users/{userId}/role', [AdminController::class, 'updateUserRole']);
+    //Route::delete('/suppliers/{userId}', [AdminController::class, 'deleteSupplier']);
     Route::put('/users/{userId}/toggle-status', [AdminController::class, 'toggleUserStatus']);
     Route::delete('/users/{userId}', [AdminController::class, 'deleteUser']);
     

@@ -12,14 +12,20 @@ class OrderItem extends Model
         'menu_item_id',
         'quantity',
         'unit_price',
+        'unit_cost',
         'total_price',
-        'special_instructions'
+        'total_cost',
+        'special_instructions',
+        'customizations',
     ];
 
     protected $casts = [
         'quantity' => 'decimal:3',
         'unit_price' => 'decimal:2',
-        'total_price' => 'decimal:2'
+        'unit_cost' => 'decimal:2',
+        'total_price' => 'decimal:2',
+        'total_cost' => 'decimal:2',
+        'customizations' => 'array',
     ];
 
     public function order(): BelongsTo

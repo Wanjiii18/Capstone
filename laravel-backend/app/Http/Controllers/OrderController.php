@@ -3,6 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Inventory;
+use App\Models\Karenderia;
+use App\Models\MenuItem;
+use App\Models\Order;
+use App\Models\OrderItem;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -75,16 +79,15 @@ class OrderController extends Controller
     }
 
     /**
-     * Store a newly created order
+     * Store a newly created order (POS / dine-in sales)
      */
     public function store(Request $request): JsonResponse
     {
         try {
-            // Validate the incoming request
             $validatedData = $request->validate([
                 'karenderiaId' => 'required|exists:karenderias,id',
                 'items' => 'required|array|min:1',
-                'items.*.menuItemId' => 'required|string',
+                'items.*.menuItemId' => 'required',
                 'items.*.menuItemName' => 'required|string',
                 'items.*.quantity' => 'required|integer|min:1',
                 'items.*.unitPrice' => 'required|numeric|min:0',
@@ -96,145 +99,177 @@ class OrderController extends Controller
                 'tax' => 'nullable|numeric|min:0',
                 'discount' => 'nullable|numeric|min:0',
                 'totalAmount' => 'required|numeric|min:0',
-                'paymentMethod' => 'required|in:cash,card,gcash,online_payment',
+                'paymentMethod' => 'required|in:cash,card,gcash,maya,online_payment',
+                'orderStatus' => 'nullable|string',
+                'tableNumber' => 'nullable|string|max:50',
                 'notes' => 'nullable|string',
-                'seasonalData' => 'nullable|array'
+                'seasonalData' => 'nullable|array',
             ]);
 
-            // Get the authenticated user (if any) - allow guest orders
             $user = $request->user();
-            
-            // ===== INVENTORY VALIDATION =====
-            // Check if there's enough inventory for all items before creating order
-            $inventoryService = app(\App\Services\InventoryService::class);
-            $inventoryDeductions = [];
-            
-            foreach ($validatedData['items'] as $item) {
-                $menuItem = \App\Models\MenuItem::where('id', $item['menuItemId'])
-                    ->orWhere('name', $item['menuItemName'])
-                    ->with('ingredients')
-                    ->first();
-                
-                if ($menuItem && $menuItem->ingredients()->exists()) {
-                    // Get all required ingredients for this menu item
-                    foreach ($menuItem->ingredients as $ingredient) {
-                        $totalNeeded = $ingredient->quantity_needed * $item['quantity'];
-                        
-                        // Check if sufficient inventory exists
-                        if (!$inventoryService->checkStockAvailability($ingredient->inventory_id, $totalNeeded)) {
-                            $inventory = Inventory::find($ingredient->inventory_id);
-                            return response()->json([
-                                'success' => false,
-                                'message' => "Insufficient inventory for order",
-                                'details' => [
-                                    'item' => $item['menuItemName'],
-                                    'required_ingredient' => $inventory->item_name,
-                                    'needed' => $totalNeeded,
-                                    'available' => $inventory->current_stock,
-                                    'unit' => $inventory->unit
-                                ]
-                            ], 422);
-                        }
-                        
-                        // Store deduction info for later
-                        if (!isset($inventoryDeductions[$ingredient->inventory_id])) {
-                            $inventoryDeductions[$ingredient->inventory_id] = 0;
-                        }
-                        $inventoryDeductions[$ingredient->inventory_id] += $totalNeeded;
-                    }
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Authentication required',
+                ], 401);
+            }
+
+            $karenderiaId = (int) $validatedData['karenderiaId'];
+
+            if ($user->role === 'karenderia_owner') {
+                $ownsKarenderia = Karenderia::where('id', $karenderiaId)
+                    ->where('owner_id', $user->id)
+                    ->exists();
+
+                if (!$ownsKarenderia) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unauthorized for this karenderia',
+                    ], 403);
                 }
             }
-            
-            // ===== CREATE ORDER =====
-            // Create the order
-            $order = \App\Models\Order::create([
-                'customer_id' => $user ? $user->id : null,
-                'karenderia_id' => $validatedData['karenderiaId'],
-                'status' => 'pending',
-                'payment_status' => 'pending',
-                'payment_method' => $validatedData['paymentMethod'],
-                'subtotal' => $validatedData['subtotal'],
-                'delivery_fee' => 0, // Set based on order type if needed
-                'service_fee' => 0,
-                'tax' => $validatedData['tax'] ?? 0,
-                'total_amount' => $validatedData['totalAmount'],
-                'total_cost' => 0, // Will be calculated based on menu items
-                'delivery_address' => $validatedData['orderType'] === 'delivery' ? ($user && $user->address ? $user->address : null) : null,
-                'special_instructions' => $validatedData['notes'] ?? null,
-                'estimated_delivery_time' => $validatedData['orderType'] === 'delivery' ? now()->addMinutes(30) : null,
-                'order_tracking' => [
-                    'status' => 'pending',
-                    'created_at' => now()->toISOString(),
-                    'customer_name' => $validatedData['customerName'] ?? ($user->name ?? 'Guest'),
-                    'customer_phone' => $validatedData['customerPhone'] ?? ($user->phone_number ?? null),
-                    'order_type' => $validatedData['orderType'],
-                    'seasonal_data' => $validatedData['seasonalData'] ?? null
-                ]
-            ]);
 
-            // Create order items
-            $totalCost = 0;
-            foreach ($validatedData['items'] as $item) {
-                // Try to find the menu item to get cost price
-                $menuItem = \App\Models\MenuItem::where('id', $item['menuItemId'])
-                    ->orWhere('name', $item['menuItemName'])
-                    ->first();
-                
-                $unitCost = $menuItem ? $menuItem->cost_price : ($item['unitPrice'] * 0.6); // Default to 60% margin
-                $itemTotalCost = $unitCost * $item['quantity'];
-                $totalCost += $itemTotalCost;
+            $status = $this->normalizeOrderStatus($validatedData['orderStatus'] ?? 'delivered');
+            $paymentStatus = in_array($status, ['delivered', 'ready'], true) ? 'paid' : 'pending';
+            $paymentMethod = $validatedData['paymentMethod'] === 'online_payment'
+                ? 'gcash'
+                : $validatedData['paymentMethod'];
 
-                \App\Models\OrderItem::create([
-                    'order_id' => $order->id,
-                    'menu_item_id' => $menuItem ? $menuItem->id : null,
-                    'menu_item_name' => $item['menuItemName'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unitPrice'],
-                    'unit_cost' => $unitCost,
-                    'total_price' => $item['subtotal'],
-                    'total_cost' => $itemTotalCost,
-                    'special_instructions' => null,
-                    'preparation_time_minutes' => $menuItem ? $menuItem->preparation_time_minutes : 15
+            $order = DB::transaction(function () use ($validatedData, $user, $karenderiaId, $status, $paymentStatus, $paymentMethod) {
+                $order = Order::create([
+                    'order_number' => 'KP-' . now()->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6)),
+                    'customer_id' => $user->id,
+                    'karenderia_id' => $karenderiaId,
+                    'status' => $status,
+                    'payment_status' => $paymentStatus,
+                    'payment_method' => $paymentMethod,
+                    'subtotal' => $validatedData['subtotal'],
+                    'delivery_fee' => 0,
+                    'service_fee' => 0,
+                    'tax' => $validatedData['tax'] ?? 0,
+                    'total_amount' => $validatedData['totalAmount'],
+                    'total_cost' => 0,
+                    'delivery_address' => $validatedData['orderType'] === 'delivery'
+                        ? ($user->address ?? null)
+                        : null,
+                    'special_instructions' => $validatedData['notes'] ?? null,
+                    'estimated_delivery_time' => $validatedData['orderType'] === 'delivery'
+                        ? now()->addMinutes(30)
+                        : null,
+                    'order_tracking' => [
+                        'status' => $status,
+                        'created_at' => now()->toISOString(),
+                        'customer_name' => $validatedData['customerName'] ?? $user->name,
+                        'customer_phone' => $validatedData['customerPhone'] ?? ($user->phone_number ?? null),
+                        'order_type' => $validatedData['orderType'],
+                        'table_number' => $validatedData['tableNumber'] ?? null,
+                        'seasonal_data' => $validatedData['seasonalData'] ?? null,
+                        'stock_deducted' => false,
+                    ],
                 ]);
-            }
 
-            // Update the order with total cost
-            $order->update(['total_cost' => $totalCost]);
-            
-            // ===== DEDUCT INVENTORY =====
-            // Now deduct the inventory for all items
-            foreach ($inventoryDeductions as $inventoryId => $quantity) {
-                $inventoryService->deductStock($inventoryId, $quantity, "Order #" . $order->id);
-            }
+                $totalCost = 0;
 
-            // Load the order with relationships
-            $order->load(['orderItems', 'karenderia', 'customer']);
+                foreach ($validatedData['items'] as $item) {
+                    $menuItemId = $this->resolveMenuItemId($karenderiaId, $item);
+                    if (!$menuItemId) {
+                        throw new \RuntimeException('Menu item not found: ' . $item['menuItemName']);
+                    }
+
+                    $menuItem = MenuItem::where('id', $menuItemId)
+                        ->where('karenderia_id', $karenderiaId)
+                        ->first();
+
+                    $unitCost = $menuItem
+                        ? (float) ($menuItem->cost_price ?? ($item['unitPrice'] * 0.6))
+                        : ((float) $item['unitPrice'] * 0.6);
+                    $itemTotalCost = $unitCost * (int) $item['quantity'];
+                    $totalCost += $itemTotalCost;
+
+                    OrderItem::create([
+                        'order_id' => $order->id,
+                        'menu_item_id' => $menuItemId,
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $item['unitPrice'],
+                        'unit_cost' => $unitCost,
+                        'total_price' => $item['subtotal'],
+                        'total_cost' => $itemTotalCost,
+                    ]);
+
+                    MenuItem::where('id', $menuItemId)->increment('total_orders', (int) $item['quantity']);
+                }
+
+                $order->update(['total_cost' => $totalCost]);
+
+                if (in_array($status, ['delivered', 'ready'], true)) {
+                    $this->deductKitchenStockForCompletedOrder((int) $order->id, $karenderiaId);
+
+                    $tracking = $order->order_tracking ?? [];
+                    $tracking['stock_deducted'] = true;
+                    $tracking['completed_at'] = now()->toISOString();
+                    $order->update(['order_tracking' => $tracking]);
+                }
+
+                return $order->fresh(['orderItems', 'karenderia', 'customer']);
+            });
 
             return response()->json([
                 'success' => true,
-                'message' => 'Order created successfully and inventory deducted',
+                'message' => 'Order created successfully. Inventory and analytics updated.',
                 'data' => [
-                    'id' => $order->id,
+                    'id' => (string) $order->id,
                     'order_number' => $order->order_number,
                     'order' => $order,
-                    'inventory_deducted' => count($inventoryDeductions) > 0
-                ]
+                ],
             ], 201);
-
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
-            Log::error('Order creation failed: ' . $e->getMessage());
-            
+            Log::error('Order creation failed: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create order: ' . $e->getMessage()
+                'message' => 'Failed to create order: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    private function normalizeOrderStatus(?string $status): string
+    {
+        $status = strtolower((string) $status);
+
+        if ($status === 'completed') {
+            return 'delivered';
+        }
+
+        $allowed = ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled'];
+
+        return in_array($status, $allowed, true) ? $status : 'delivered';
+    }
+
+    private function resolveMenuItemId(int $karenderiaId, array $item): ?int
+    {
+        $menuItemId = $item['menuItemId'] ?? null;
+
+        if (is_numeric($menuItemId)) {
+            $exists = MenuItem::where('id', (int) $menuItemId)
+                ->where('karenderia_id', $karenderiaId)
+                ->exists();
+
+            return $exists ? (int) $menuItemId : null;
+        }
+
+        $menuItem = MenuItem::where('karenderia_id', $karenderiaId)
+            ->where('name', $item['menuItemName'])
+            ->first();
+
+        return $menuItem?->id;
     }
 
     /**
@@ -242,10 +277,42 @@ class OrderController extends Controller
      */
     public function getRecentOrders(Request $request): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'orders' => []
-        ]);
+        try {
+            $user = $request->user();
+            if (!$user) {
+                return response()->json(['success' => false, 'message' => 'Authentication required'], 401);
+            }
+
+            $limit = min(max((int) $request->get('limit', 30), 1), 100);
+            $period = $request->get('period', 'today');
+
+            $query = Order::with(['orderItems.menuItem'])
+                ->where('payment_status', 'paid')
+                ->orderByDesc('created_at');
+
+            if ($period === 'today') {
+                $query->whereDate('created_at', today());
+            }
+
+            if ($user->role === 'karenderia_owner') {
+                $karenderiaIds = Karenderia::where('owner_id', $user->id)->pluck('id');
+                $query->whereIn('karenderia_id', $karenderiaIds);
+            } elseif ($user->role !== 'admin') {
+                $query->where('customer_id', $user->id);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $query->limit($limit)->get(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch recent orders: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch recent orders',
+            ], 500);
+        }
     }
 
     /**
@@ -266,12 +333,12 @@ class OrderController extends Controller
     {
         try {
             $validatedData = $request->validate([
-                'orderStatus' => 'required|in:pending,preparing,ready,completed,cancelled',
+                'orderStatus' => 'required|in:pending,preparing,ready,completed,cancelled,confirmed,delivered',
                 'preparedAt' => 'nullable|date',
                 'completedAt' => 'nullable|date'
             ]);
 
-            $order = \App\Models\Order::findOrFail($id);
+            $order = Order::findOrFail($id);
             
             // Check if user has permission to update this order
             $user = $request->user();
@@ -293,20 +360,18 @@ class OrderController extends Controller
             }
 
             $previousStatus = $order->status;
-            $newStatus = $validatedData['orderStatus'];
+            $newStatus = $this->normalizeOrderStatus($validatedData['orderStatus']);
 
             DB::transaction(function () use ($order, $validatedData, $previousStatus, $newStatus) {
-                // Update order status
                 $order->status = $newStatus;
 
-                // Update order tracking with timestamps
                 $tracking = $order->order_tracking ?? [];
                 $tracking['status'] = $newStatus;
                 $tracking['updated_at'] = now()->toISOString();
 
                 if ($newStatus === 'preparing') {
                     $tracking['prepared_at'] = $validatedData['preparedAt'] ?? now()->toISOString();
-                } elseif ($newStatus === 'completed') {
+                } elseif (in_array($newStatus, ['delivered', 'ready'], true)) {
                     $tracking['completed_at'] = $validatedData['completedAt'] ?? now()->toISOString();
                     $order->payment_status = 'paid';
                 }
@@ -314,9 +379,14 @@ class OrderController extends Controller
                 $order->order_tracking = $tracking;
                 $order->save();
 
-                // Apply one-time stock deduction only on first transition to completed.
-                if ($newStatus === 'completed' && $previousStatus !== 'completed') {
+                $alreadyDeducted = (bool) ($tracking['stock_deducted'] ?? false);
+                $isSaleComplete = in_array($newStatus, ['delivered', 'ready'], true);
+                $wasSaleComplete = in_array($previousStatus, ['delivered', 'ready'], true);
+
+                if ($isSaleComplete && !$wasSaleComplete && !$alreadyDeducted) {
                     $this->deductKitchenStockForCompletedOrder((int) $order->id, (int) $order->karenderia_id);
+                    $tracking['stock_deducted'] = true;
+                    $order->update(['order_tracking' => $tracking]);
                 }
             });
 
